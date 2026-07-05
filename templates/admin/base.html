@@ -1,4 +1,4 @@
-<!-- Admin base layout — shared sidebar + topbar for all admin pages -->
+<!-- Admin base layout — sidebar on desktop, top navbar on mobile -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -16,7 +16,9 @@
       min-height: 100vh;
     }
 
-    /* ── Sidebar ── */
+    /* ══════════════════════════════════════════
+       SIDEBAR — visible on desktop only
+    ══════════════════════════════════════════ */
     .sidebar {
       width: 220px;
       background: #0f172a;
@@ -55,11 +57,74 @@
       padding: 10px 0;
     }
 
-    /* ── Main content ── */
+    /* ══════════════════════════════════════════
+       MOBILE TOP NAVBAR — hidden on desktop
+    ══════════════════════════════════════════ */
+    .mobile-nav {
+      display: none;
+      background: #0f172a;
+      padding: 12px 16px;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .mobile-nav .brand {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #fff;
+    }
+    /* Hamburger button */
+    .hamburger {
+      background: none;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      padding: 4px;
+    }
+    .hamburger span {
+      display: block;
+      width: 22px;
+      height: 2px;
+      background: #fff;
+      border-radius: 2px;
+      transition: 0.2s;
+    }
+    /* Dropdown menu — hidden by default */
+    .mobile-menu {
+      display: none;
+      background: #0f172a;
+      flex-direction: column;
+      padding: 8px 0 16px;
+    }
+    .mobile-menu.open {
+      display: flex;
+    }
+    .mobile-menu a {
+      display: block;
+      padding: 11px 20px;
+      color: #94a3b8;
+      text-decoration: none;
+      font-size: 0.9rem;
+      border-bottom: 1px solid #1e293b;
+    }
+    .mobile-menu a:hover, .mobile-menu a.active {
+      background: #1e293b;
+      color: #fff;
+    }
+    .mobile-menu .logout-link { color: #f87171 !important; }
+
+    /* ══════════════════════════════════════════
+       MAIN CONTENT
+    ══════════════════════════════════════════ */
     .main {
       flex: 1;
       padding: 32px;
       overflow-y: auto;
+      min-width: 0;  /* prevents overflow on mobile */
     }
 
     .page-title {
@@ -78,7 +143,7 @@
       font-size: 0.88rem;
     }
 
-    /* ── Cards / stats ── */
+    /* ── Stats grid ── */
     .stat-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -107,12 +172,13 @@
     .table-box {
       background: #fff;
       border-radius: 10px;
-      overflow: hidden;
+      overflow-x: auto;   /* scroll horizontally on mobile */
       box-shadow: 0 1px 4px rgba(0,0,0,0.06);
     }
     .table-box table {
       width: 100%;
       border-collapse: collapse;
+      min-width: 500px;   /* ensures table doesn't squish */
     }
     .table-box th, .table-box td {
       padding: 12px 16px;
@@ -139,13 +205,13 @@
       border: none;
       text-decoration: none;
     }
-    .btn-dark   { background: #0f172a; color: #fff; }
+    .btn-dark  { background: #0f172a; color: #fff; }
     .btn-dark:hover { background: #1e293b; }
-    .btn-blue   { background: #3b82f6; color: #fff; }
+    .btn-blue  { background: #3b82f6; color: #fff; }
     .btn-blue:hover { background: #2563eb; }
-    .btn-red    { background: #ef4444; color: #fff; }
+    .btn-red   { background: #ef4444; color: #fff; }
     .btn-red:hover  { background: #dc2626; }
-    .btn-green  { background: #22c55e; color: #fff; }
+    .btn-green { background: #22c55e; color: #fff; }
 
     /* ── Form ── */
     .form-box {
@@ -195,20 +261,59 @@
       object-fit: cover;
       border-radius: 6px;
     }
+
+    /* ══════════════════════════════════════════
+       MOBILE OVERRIDES
+    ══════════════════════════════════════════ */
+    @media (max-width: 768px) {
+      /* Hide desktop sidebar, show mobile nav */
+      body { flex-direction: column; }
+      .sidebar { display: none; }
+      .mobile-nav { display: flex; }
+
+      .main { padding: 16px; }
+      .page-title { font-size: 1.1rem; margin-bottom: 16px; }
+
+      /* Stats — 2 columns on mobile */
+      .stat-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+      .stat-card { padding: 14px; }
+      .stat-card .value { font-size: 1.4rem; }
+
+      /* Form full width */
+      .form-box { padding: 20px 16px; max-width: 100%; }
+    }
   </style>
 </head>
 <body>
 
+  <!-- Desktop sidebar -->
   <div class="sidebar">
     <div class="brand">⚙️ Admin Panel</div>
-    <a href="{{ url_for('admin_dashboard') }}"  {% if request.endpoint == 'admin_dashboard'  %}class="active"{% endif %}>Dashboard</a>
-    <a href="{{ url_for('admin_products') }}"   {% if 'product' in request.endpoint          %}class="active"{% endif %}>Products</a>
-    <a href="{{ url_for('admin_orders') }}"     {% if request.endpoint == 'admin_orders'     %}class="active"{% endif %}>Orders</a>
-    <a href="{{ url_for('admin_users') }}"      {% if request.endpoint == 'admin_users'      %}class="active"{% endif %}>Users</a>
+    <a href="{{ url_for('admin_dashboard') }}" {% if request.endpoint == 'admin_dashboard' %}class="active"{% endif %}>Dashboard</a>
+    <a href="{{ url_for('admin_products') }}"  {% if 'product' in request.endpoint         %}class="active"{% endif %}>Products</a>
+    <a href="{{ url_for('admin_orders') }}"    {% if request.endpoint == 'admin_orders'    %}class="active"{% endif %}>Orders</a>
+    <a href="{{ url_for('admin_users') }}"     {% if request.endpoint == 'admin_users'     %}class="active"{% endif %}>Users</a>
     <div class="logout">
       <a href="{{ url_for('admin_change_password') }}">Change Password</a>
       <a href="{{ url_for('admin_logout') }}">Logout</a>
     </div>
+  </div>
+
+  <!-- Mobile top navbar -->
+  <div class="mobile-nav">
+    <span class="brand">⚙️ Admin</span>
+    <button class="hamburger" onclick="toggleMenu()">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+  <!-- Mobile dropdown menu -->
+  <div class="mobile-menu" id="mobileMenu">
+    <a href="{{ url_for('admin_dashboard') }}" {% if request.endpoint == 'admin_dashboard' %}class="active"{% endif %}>Dashboard</a>
+    <a href="{{ url_for('admin_products') }}"  {% if 'product' in request.endpoint         %}class="active"{% endif %}>Products</a>
+    <a href="{{ url_for('admin_orders') }}"    {% if request.endpoint == 'admin_orders'    %}class="active"{% endif %}>Orders</a>
+    <a href="{{ url_for('admin_users') }}"     {% if request.endpoint == 'admin_users'     %}class="active"{% endif %}>Users</a>
+    <a href="{{ url_for('admin_change_password') }}">Change Password</a>
+    <a href="{{ url_for('admin_logout') }}" class="logout-link">Logout</a>
   </div>
 
   <div class="main">
@@ -217,6 +322,13 @@
     {% endwith %}
     {% block content %}{% endblock %}
   </div>
+
+  <script>
+    function toggleMenu() {
+      var menu = document.getElementById('mobileMenu');
+      menu.classList.toggle('open');
+    }
+  </script>
 
 </body>
 </html>
