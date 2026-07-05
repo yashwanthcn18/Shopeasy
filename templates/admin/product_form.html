@@ -1,0 +1,48 @@
+<!-- Add / Edit product form — same page used for both -->
+{% extends 'admin/base.html' %}
+{% block title %}{{ 'Edit' if product else 'Add' }} Product{% endblock %}
+
+{% block content %}
+<h1 class="page-title">{{ 'Edit' if product else 'Add' }} Product</h1>
+
+<div class="form-box">
+  <!-- enctype needed so image file upload works -->
+  <form method="POST" enctype="multipart/form-data">
+
+    <label>Product Name</label>
+    <input type="text" name="name" value="{{ product.name if product else '' }}" required />
+
+    <label>Description</label>
+    <textarea name="description">{{ product.description if product else '' }}</textarea>
+
+    <label>Price (₹)</label>
+    <input type="number" name="price" step="0.01" value="{{ product.price if product else '' }}" required />
+
+    <label>Stock Quantity</label>
+    <input type="number" name="stock" value="{{ product.stock if product else '' }}" required />
+
+    <!-- Option 1: upload an image from computer -->
+    <label>Upload Image (jpg / png)</label>
+    <input type="file" name="image_file" accept=".jpg,.jpeg,.png,.webp" />
+
+    <!-- Option 2: paste an image URL -->
+    <label>Or paste Image URL</label>
+    <input type="text" name="image_url" placeholder="https://... or /static/images/..."
+           value="{{ product.image_url if product else '' }}" />
+
+    <!-- Show current image when editing -->
+    {% if product and product.image_url %}
+    <div style="margin-bottom:16px;">
+      <p style="font-size:0.78rem; color:#64748b; margin-bottom:6px;">Current image:</p>
+      <img src="{{ product.image_url }}" style="height:80px; border-radius:6px; object-fit:cover;" />
+    </div>
+    {% endif %}
+
+    <div style="display:flex; gap:12px;">
+      <button class="btn btn-dark" type="submit">{{ 'Save Changes' if product else 'Add Product' }}</button>
+      <a class="btn" style="background:#f1f5f9; color:#334155;" href="{{ url_for('admin_products') }}">Cancel</a>
+    </div>
+
+  </form>
+</div>
+{% endblock %}

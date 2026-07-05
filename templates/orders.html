@@ -1,0 +1,39 @@
+<!-- orders.html — List of all past orders for the logged-in user -->
+{% extends 'base.html' %}
+{% block title %}My Orders{% endblock %}
+
+{% block content %}
+<h1 class="page-title">My Orders</h1>
+
+{% if orders %}
+
+  {% for order in orders %}
+  <div class="order-card">
+
+    <!-- Order header: ID + status badge -->
+    <div class="order-header">
+      <h4>Order #{{ order.id }}</h4>
+      <span class="status-badge">{{ order.status }}</span>
+    </div>
+
+    <!-- Items in this order -->
+    <div class="order-items-list">
+      {% for item in order.items %}
+        {{ item.product.name }} × {{ item.quantity }} — ₹{{ item.price * item.quantity }}<br/>
+      {% endfor %}
+    </div>
+
+    <!-- Footer: delivery address + total -->
+    <div class="order-footer">
+      <span>{{ order.address }}</span>
+      <span>Total: <strong>₹{{ order.total }}</strong></span>
+    </div>
+
+  </div>
+  {% endfor %}
+
+{% else %}
+  <p class="empty-msg">No orders yet. <a href="{{ url_for('home') }}">Start shopping</a></p>
+{% endif %}
+
+{% endblock %}

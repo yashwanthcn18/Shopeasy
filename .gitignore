@@ -1,0 +1,14 @@
+# Database — never upload this, Render will create its own
+instance/
+*.db
+
+# Python cache files — not needed
+__pycache__/
+*.pyc
+
+# Environment variables file — contains secrets
+.env
+
+# Virtual environment folder
+venv/
+env/

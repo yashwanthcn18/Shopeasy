@@ -1,0 +1,42 @@
+<!-- base.html — Every page extends this. It provides the navbar and flash messages. -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Shop{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+
+  <!-- Navbar — only show when a user is logged in -->
+  {% if user %}
+  <nav>
+    <a class="nav-logo" href="{{ url_for('home') }}">ShopEasy</a>
+    <div class="nav-links">
+      <a href="{{ url_for('home') }}">Home</a>
+      <a href="{{ url_for('cart') }}">Cart</a>
+      <a href="{{ url_for('orders') }}">My Orders</a>
+      <a href="{{ url_for('logout') }}">Logout</a>
+    </div>
+  </nav>
+  {% endif %}
+
+  <div class="container">
+
+    <!-- Flash messages (e.g. "Invalid password", "Order placed") -->
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        {% for msg in messages %}
+          <div class="flash">{{ msg }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <!-- Each page fills in this block -->
+    {% block content %}{% endblock %}
+
+  </div>
+
+</body>
+</html>

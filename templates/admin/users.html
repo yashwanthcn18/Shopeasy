@@ -1,0 +1,32 @@
+<!-- Admin users — view all registered customers -->
+{% extends 'admin/base.html' %}
+{% block title %}Users{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Users</h1>
+
+<div class="table-box">
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Total Orders</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for user in users %}
+      <tr>
+        <td>{{ user.id }}</td>
+        <td>{{ user.name }}</td>
+        <td>{{ user.email }}</td>
+        <td>{{ user.id | count_orders }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4" style="color:#94a3b8; text-align:center; padding:24px;">No users yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

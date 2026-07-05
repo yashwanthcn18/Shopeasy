@@ -1,0 +1,56 @@
+<!-- Admin dashboard — stats overview + recent orders -->
+{% extends 'admin/base.html' %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Dashboard</h1>
+
+<!-- 4 stat cards -->
+<div class="stat-grid">
+  <div class="stat-card">
+    <div class="label">Total Products</div>
+    <div class="value">{{ stats.products }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="label">Total Orders</div>
+    <div class="value">{{ stats.orders }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="label">Total Users</div>
+    <div class="value">{{ stats.users }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="label">Total Revenue</div>
+    <div class="value">₹{{ stats.revenue | int }}</div>
+  </div>
+</div>
+
+<!-- Recent orders table -->
+<h2 style="font-size:1rem; margin-bottom:14px; color:#64748b;">Recent Orders</h2>
+<div class="table-box">
+  <table>
+    <thead>
+      <tr>
+        <th>Order ID</th>
+        <th>Customer</th>
+        <th>Total</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for order in recent_orders %}
+      <tr>
+        <td>#{{ order.id }}</td>
+        <td>{{ order.user_id }}</td>
+        <td>₹{{ order.total | int }}</td>
+        <td>
+          <span class="badge badge-{{ order.status | lower }}">{{ order.status }}</span>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4" style="color:#94a3b8; text-align:center; padding:24px;">No orders yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

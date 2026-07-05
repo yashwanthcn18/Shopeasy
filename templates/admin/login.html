@@ -1,0 +1,39 @@
+<!-- Admin login — separate from customer login -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Admin Login</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f172a; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+    .box { background: #fff; padding: 40px; border-radius: 12px; width: 360px; }
+    h2 { font-size: 1.3rem; margin-bottom: 6px; }
+    p  { font-size: 0.82rem; color: #64748b; margin-bottom: 24px; }
+    label { display: block; font-size: 0.8rem; color: #64748b; margin-bottom: 4px; }
+    input { width: 100%; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 0.9rem; margin-bottom: 16px; outline: none; }
+    input:focus { border-color: #0f172a; }
+    button { width: 100%; padding: 11px; background: #0f172a; color: #fff; border: none; border-radius: 6px; font-size: 0.9rem; font-weight: 600; cursor: pointer; }
+    button:hover { background: #1e293b; }
+    .flash { background: #fee2e2; color: #991b1b; padding: 10px 14px; border-radius: 6px; font-size: 0.82rem; margin-bottom: 16px; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h2>Admin Login</h2>
+    <p>ShopEasy admin panel</p>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}{% for msg in messages %}<div class="flash">{{ msg }}</div>{% endfor %}{% endif %}
+    {% endwith %}
+
+    <form method="POST">
+      <label>Username</label>
+      <input type="text" name="username" placeholder="admin" required />
+      <label>Password</label>
+      <input type="password" name="password" placeholder="••••••••" required />
+      <button type="submit">Login</button>
+    </form>
+  </div>
+</body>
+</html>

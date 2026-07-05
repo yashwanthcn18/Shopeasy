@@ -1,0 +1,45 @@
+<!-- cart.html — Shows all items the user has added to their cart -->
+{% extends 'base.html' %}
+{% block title %}Cart{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Your Cart</h1>
+
+{% if items %}
+
+  <table class="cart-table">
+    <thead>
+      <tr>
+        <th>Product</th>
+        <th>Price</th>
+        <th>Qty</th>
+        <th>Subtotal</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in items %}
+      <tr>
+        <td>{{ item.product.name }}</td>
+        <td>₹{{ item.product.price }}</td>
+        <td>{{ item.quantity }}</td>
+        <td>₹{{ item.product.price * item.quantity }}</td>
+        <!-- Remove button calls remove_from_cart with the cart item id -->
+        <td><a class="btn btn-red" href="{{ url_for('remove_from_cart', item_id=item.id) }}">Remove</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <p class="cart-total">Total: ₹{{ total }}</p>
+
+  <div class="cart-actions">
+    <a class="btn btn-outline" href="{{ url_for('home') }}">Continue Shopping</a>
+    <a class="btn btn-dark" href="{{ url_for('checkout') }}">Proceed to Checkout</a>
+  </div>
+
+{% else %}
+  <p class="empty-msg">Your cart is empty. <a href="{{ url_for('home') }}">Browse products</a></p>
+{% endif %}
+
+{% endblock %}

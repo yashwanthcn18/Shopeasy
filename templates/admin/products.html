@@ -1,0 +1,41 @@
+<!-- Admin products list — view, edit, delete all products -->
+{% extends 'admin/base.html' %}
+{% block title %}Products{% endblock %}
+
+{% block content %}
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+  <h1 class="page-title" style="margin:0;">Products</h1>
+  <a class="btn btn-dark" href="{{ url_for('admin_add_product') }}">+ Add Product</a>
+</div>
+
+<div class="table-box">
+  <table>
+    <thead>
+      <tr>
+        <th>Image</th>
+        <th>Name</th>
+        <th>Price</th>
+        <th>Stock</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in products %}
+      <tr>
+        <td><img class="thumb" src="{{ p.image_url }}" alt="{{ p.name }}" onerror="this.src='https://placehold.co/48x48?text=?'" /></td>
+        <td>{{ p.name }}</td>
+        <td>₹{{ p.price | int }}</td>
+        <td>{{ p.stock }}</td>
+        <td style="display:flex; gap:8px; padding-top:14px;">
+          <a class="btn btn-blue" href="{{ url_for('admin_edit_product', product_id=p.id) }}">Edit</a>
+          <a class="btn btn-red"  href="{{ url_for('admin_delete_product', product_id=p.id) }}"
+             onclick="return confirm('Delete {{ p.name }}?')">Delete</a>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" style="color:#94a3b8; text-align:center; padding:24px;">No products yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,25 @@
+<!-- home.html — Product listing grid -->
+{% extends 'base.html' %}
+{% block title %}Home{% endblock %}
+
+{% block content %}
+<h1 class="page-title">All Products</h1>
+
+<div class="product-grid">
+  {% for p in products %}
+  <div class="product-card">
+
+    <img src="{{ p.image_url }}" alt="{{ p.name }}" />
+
+    <div class="product-info">
+      <h3>{{ p.name }}</h3>
+      <p class="desc">{{ p.description }}</p>
+      <p class="price">₹{{ p.price }}</p>
+      <!-- Clicking this calls the add_to_cart route with the product id -->
+      <a class="add-btn" href="{{ url_for('add_to_cart', product_id=p.id) }}">Add to Cart</a>
+    </div>
+
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

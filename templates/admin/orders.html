@@ -1,0 +1,54 @@
+<!-- Admin orders — view all orders, update status -->
+{% extends 'admin/base.html' %}
+{% block title %}Orders{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Orders</h1>
+
+<div class="table-box">
+  <table>
+    <thead>
+      <tr>
+        <th>Order ID</th>
+        <th>User ID</th>
+        <th>Items</th>
+        <th>Total</th>
+        <th>Address</th>
+        <th>Status</th>
+        <th>Update</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for order in orders %}
+      <tr>
+        <td>#{{ order.id }}</td>
+        <td>{{ order.user_id }}</td>
+        <td>
+          {% for item in order.items %}
+            {{ item.product.name }} × {{ item.quantity }}<br/>
+          {% endfor %}
+        </td>
+        <td>₹{{ order.total | int }}</td>
+        <td style="max-width:160px; word-break:break-word;">{{ order.address }}</td>
+        <td>
+          <span class="badge badge-{{ order.status | lower }}">{{ order.status }}</span>
+        </td>
+        <td>
+          <!-- Dropdown to change status, submits instantly on change -->
+          <form method="POST" action="{{ url_for('admin_update_status', order_id=order.id) }}">
+            <select name="status" onchange="this.form.submit()"
+                    style="padding:5px 8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.82rem; cursor:pointer;">
+              <option value="Placed"    {% if order.status == 'Placed'    %}selected{% endif %}>Placed</option>
+              <option value="Shipped"   {% if order.status == 'Shipped'   %}selected{% endif %}>Shipped</option>
+              <option value="Delivered" {% if order.status == 'Delivered' %}selected{% endif %}>Delivered</option>
+            </select>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" style="color:#94a3b8; text-align:center; padding:24px;">No orders yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
