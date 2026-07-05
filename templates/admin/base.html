@@ -205,7 +205,10 @@
     <a href="{{ url_for('admin_products') }}"   {% if 'product' in request.endpoint          %}class="active"{% endif %}>Products</a>
     <a href="{{ url_for('admin_orders') }}"     {% if request.endpoint == 'admin_orders'     %}class="active"{% endif %}>Orders</a>
     <a href="{{ url_for('admin_users') }}"      {% if request.endpoint == 'admin_users'      %}class="active"{% endif %}>Users</a>
-    <div class="logout"><a href="{{ url_for('admin_logout') }}">Logout</a></div>
+    <div class="logout">
+      <a href="{{ url_for('admin_change_password') }}">Change Password</a>
+      <a href="{{ url_for('admin_logout') }}">Logout</a>
+    </div>
   </div>
 
   <div class="main">

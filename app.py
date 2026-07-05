@@ -252,8 +252,17 @@ def admin_required():
 @app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
     if request.method == 'POST':
-        # Simple hardcoded admin credentials — change these to your own
-        if request.form['username'] == 'admin' and request.form['password'] == 'admin@yash@12345':
+        # Read credentials from file if it exists, otherwise use defaults
+        if os.path.exists('admin_credentials.txt'):
+            with open('admin_credentials.txt') as f:
+                lines        = f.read().splitlines()
+                saved_user   = lines[0]
+                saved_pass   = lines[1]
+        else:
+            saved_user = 'admin'
+            saved_pass = 'admin@yash@12345'
+
+        if request.form['username'] == saved_user and request.form['password'] == saved_pass:
             session['is_admin'] = True
             return redirect(url_for('admin_dashboard'))
         flash('Wrong username or password.')
@@ -264,6 +273,28 @@ def admin_login():
 def admin_logout():
     session.pop('is_admin', None)
     return redirect(url_for('admin_login'))
+
+
+# ── Change admin password — logs out immediately after saving ─────────────────
+@app.route('/admin/change-password', methods=['GET', 'POST'])
+def admin_change_password():
+    if not admin_required():
+        return redirect(url_for('admin_login'))
+
+    if request.method == 'POST':
+        new_username = request.form['username']
+        new_password = request.form['password']
+
+        # Write new credentials to a file so they persist across restarts
+        with open('admin_credentials.txt', 'w') as f:
+            f.write(f'{new_username}\n{new_password}')
+
+        # Log out immediately so new password takes effect
+        session.pop('is_admin', None)
+        flash('Password changed. Please log in with your new credentials.')
+        return redirect(url_for('admin_login'))
+
+    return render_template('admin/change_password.html')
 
 
 # ── Dashboard ─────────────────────────────────────────────────────────────────

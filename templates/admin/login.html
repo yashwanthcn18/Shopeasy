@@ -11,10 +11,18 @@
     h2 { font-size: 1.3rem; margin-bottom: 6px; }
     p  { font-size: 0.82rem; color: #64748b; margin-bottom: 24px; }
     label { display: block; font-size: 0.8rem; color: #64748b; margin-bottom: 4px; }
-    input { width: 100%; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 0.9rem; margin-bottom: 16px; outline: none; }
-    input:focus { border-color: #0f172a; }
-    button { width: 100%; padding: 11px; background: #0f172a; color: #fff; border: none; border-radius: 6px; font-size: 0.9rem; font-weight: 600; cursor: pointer; }
-    button:hover { background: #1e293b; }
+    .input-wrap { position: relative; margin-bottom: 16px; }
+    .input-wrap input { width: 100%; padding: 10px 40px 10px 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 0.9rem; outline: none; margin: 0; }
+    .input-wrap input:focus { border-color: #0f172a; }
+    /* Eye icon button inside the password field */
+    .toggle-pw {
+      position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; cursor: pointer; padding: 0;
+      color: #94a3b8; font-size: 1rem; width: auto;
+    }
+    input[type="text"], input[type="email"] { width: 100%; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 0.9rem; margin-bottom: 16px; outline: none; }
+    button[type="submit"] { width: 100%; padding: 11px; background: #0f172a; color: #fff; border: none; border-radius: 6px; font-size: 0.9rem; font-weight: 600; cursor: pointer; }
+    button[type="submit"]:hover { background: #1e293b; }
     .flash { background: #fee2e2; color: #991b1b; padding: 10px 14px; border-radius: 6px; font-size: 0.82rem; margin-bottom: 16px; }
   </style>
 </head>
@@ -30,10 +38,23 @@
     <form method="POST">
       <label>Username</label>
       <input type="text" name="username" placeholder="admin" required />
+
       <label>Password</label>
-      <input type="password" name="password" placeholder="••••••••" required />
+      <div class="input-wrap">
+        <input type="password" name="password" id="adminPassword" placeholder="••••••••" required />
+        <!-- Eye button toggles password visibility -->
+        <button type="button" class="toggle-pw" onclick="togglePassword()">👁</button>
+      </div>
+
       <button type="submit">Login</button>
     </form>
   </div>
+
+  <script>
+    function togglePassword() {
+      var input = document.getElementById('adminPassword');
+      input.type = input.type === 'password' ? 'text' : 'password';
+    }
+  </script>
 </body>
 </html>

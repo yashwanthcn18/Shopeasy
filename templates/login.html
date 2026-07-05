@@ -12,7 +12,13 @@
     <input type="email" name="email" placeholder="you@example.com" required />
 
     <label>Password</label>
-    <input type="password" name="password" placeholder="••••••••" required />
+    <div style="position:relative; margin-bottom:16px;">
+      <input type="password" name="password" id="loginPassword" placeholder="••••••••" required
+             style="width:100%; padding:10px 40px 10px 12px;" />
+      <button type="button" onclick="togglePw()"
+              style="position:absolute; right:10px; top:50%; transform:translateY(-50%);
+                     background:none; border:none; cursor:pointer; font-size:1rem; color:#999;">👁</button>
+    </div>
 
     <button class="btn btn-dark" type="submit">Log In</button>
 
@@ -20,4 +26,11 @@
 
   <p class="hint">Don't have an account? <a href="{{ url_for('signup') }}">Sign up</a></p>
 </div>
+
+<script>
+  function togglePw() {
+    var input = document.getElementById('loginPassword');
+    input.type = input.type === 'password' ? 'text' : 'password';
+  }
+</script>
 {% endblock %}
