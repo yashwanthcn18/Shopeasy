@@ -15,7 +15,16 @@
     <a class="nav-logo" href="{{ url_for('home') }}">ShopEasy</a>
     <div class="nav-links">
       <a href="{{ url_for('home') }}">Home</a>
-      <a href="{{ url_for('cart') }}">Cart</a>
+      <a href="{{ url_for('cart') }}" style="position:relative;">
+        🛒 Cart
+        {% if cart_count and cart_count > 0 %}
+        <span style="position:absolute; top:-8px; right:-10px; background:#e53935; color:#fff;
+                     border-radius:50%; font-size:0.65rem; font-weight:700;
+                     width:18px; height:18px; display:flex; align-items:center; justify-content:center;">
+          {{ cart_count }}
+        </span>
+        {% endif %}
+      </a>
       <a href="{{ url_for('orders') }}">My Orders</a>
       <a href="{{ url_for('logout') }}">Logout</a>
     </div>

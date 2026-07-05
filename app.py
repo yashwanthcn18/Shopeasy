@@ -16,6 +16,16 @@ ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'webp'}
 db.init_app(app)
 
 
+# ── Automatically pass cart_count to every template ───────────────────────────
+# This is how the badge number shows on the cart icon across all pages
+@app.context_processor
+def inject_cart_count():
+    if 'user_id' in session:
+        count = CartItem.query.filter_by(user_id=session['user_id']).count()
+        return {'cart_count': count}
+    return {'cart_count': 0}
+
+
 # ── Jinja filter: count how many orders a user has ────────────────────────────
 @app.template_filter('count_orders')
 def count_orders(user_id):
@@ -160,6 +170,29 @@ def add_to_cart(product_id):
         db.session.add(item)
 
     db.session.commit()
+    return redirect(url_for('home'))   # stay on home page after adding
+
+
+# ── Update quantity (+ or -) ──────────────────────────────────────────────────
+@app.route('/cart/update/<int:item_id>/<action>')
+def update_cart(item_id, action):
+    if not current_user():
+        return redirect(url_for('login'))
+
+    item = CartItem.query.get_or_404(item_id)
+
+    if action == 'increase':
+        item.quantity += 1
+        db.session.commit()
+    elif action == 'decrease':
+        if item.quantity > 1:
+            item.quantity -= 1
+            db.session.commit()
+        else:
+            # If quantity hits 0, remove the item entirely
+            db.session.delete(item)
+            db.session.commit()
+
     return redirect(url_for('cart'))
 
 
