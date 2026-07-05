@@ -253,7 +253,7 @@ def admin_required():
 def admin_login():
     if request.method == 'POST':
         # Simple hardcoded admin credentials — change these to your own
-        if request.form['username'] == 'admin' and request.form['password'] == 'admin123':
+        if request.form['username'] == 'admin' and request.form['password'] == 'admin@yash@12345':
             session['is_admin'] = True
             return redirect(url_for('admin_dashboard'))
         flash('Wrong username or password.')
