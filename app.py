@@ -7,7 +7,7 @@ from models import db, User, Product, CartItem, Order, OrderItem
 import os
 
 app = Flask(__name__)
-app.secret_key = 'change-this-secret-key'                     # used to sign session cookies
+app.secret_key = os.environ.get('SECRET_KEY', 'change-this-secret-key')  # reads from environment on Render
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///shop.db'   # SQLite file created automatically
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = os.path.join('static', 'images')   # where uploaded images are saved
