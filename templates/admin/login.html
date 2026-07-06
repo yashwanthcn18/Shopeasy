@@ -35,13 +35,13 @@
       {% if messages %}{% for msg in messages %}<div class="flash">{{ msg }}</div>{% endfor %}{% endif %}
     {% endwith %}
 
-    <form method="POST">
+    <form method="POST" autocomplete="off">
       <label>Username</label>
-      <input type="text" name="username" placeholder="admin" required />
+      <input type="text" name="username" placeholder="admin" autocomplete="new-password" required />
 
       <label>Password</label>
       <div class="input-wrap">
-        <input type="password" name="password" id="adminPassword" placeholder="••••••••" required />
+        <input type="password" name="password" id="adminPassword" placeholder="••••••••" autocomplete="new-password" required />
         <!-- Eye button toggles password visibility -->
         <button type="button" class="toggle-pw" onclick="togglePassword()">👁</button>
       </div>
