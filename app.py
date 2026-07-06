@@ -15,7 +15,6 @@ ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'webp'}
 
 db.init_app(app)
 
-
 # ── Automatically pass cart_count to every template ───────────────────────────
 # This is how the badge number shows on the cart icon across all pages
 @app.context_processor
@@ -463,8 +462,10 @@ def admin_users():
 #  ENTRY POINT
 # ═════════════════════════════════════════════════════════════════════════════
 
+# ── Create tables on startup — works on both Render and locally ───────────────
+with app.app_context():
+    db.create_all()
+    seed_products()
+
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()      # creates shop.db and all tables if they don't exist
-        seed_products()      # adds sample products on first run
     app.run(host='0.0.0.0', port=10000)
