@@ -6,14 +6,14 @@
 <div class="auth-box">
   <h2>Welcome back</h2>
 
-  <form method="POST" action="{{ url_for('login') }}">
+  <form method="POST" action="{{ url_for('login') }}" autocomplete="off">
 
     <label>Email</label>
-    <input type="email" name="email" placeholder="you@example.com" required />
+    <input type="email" name="email" placeholder="you@example.com" autocomplete="off" required />
 
     <label>Password</label>
     <div style="position:relative; margin-bottom:16px;">
-      <input type="password" name="password" id="loginPassword" placeholder="••••••••" required
+      <input type="password" name="password" id="loginPassword" placeholder="••••••••" autocomplete="new-password" required
              style="width:100%; padding:10px 40px 10px 12px;" />
       <button type="button" onclick="togglePw()"
               style="position:absolute; right:10px; top:50%; transform:translateY(-50%);
