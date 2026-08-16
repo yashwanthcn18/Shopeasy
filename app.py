@@ -1,10 +1,10 @@
 # app.py - Main Flask application. All routes live here.
 
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
-from models import db, User, Product, CartItem, Order, OrderItem
-import os
+from models import db, User, Product, CartItem, Order, OrderItem, NewsletterSubscriber
+import os, re
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'change-this-secret-key')  # reads from environment on Render
@@ -136,6 +136,96 @@ def logout():
     return redirect(url_for('login'))
 
 
+@app.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    if request.method == 'POST':
+        email        = request.form['email']
+        new_password = request.form['new_password']
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            flash('No account found with that email.')
+            return redirect(url_for('forgot_password'))
+        user.password = generate_password_hash(new_password)
+        db.session.commit()
+        flash('Password updated. Please log in with your new password.')
+        return redirect(url_for('login'))
+    return render_template('forgot_password.html')
+
+
+@app.route('/profile', methods=['GET', 'POST'])
+def profile():
+    user = current_user()
+    if not user:
+        return redirect(url_for('login'))
+    if request.method == 'POST':
+        user.name  = request.form['name']
+        new_email  = request.form['email']
+        if new_email != user.email and User.query.filter_by(email=new_email).first():
+            flash('That email is already used by another account.')
+            return redirect(url_for('profile'))
+        user.email = new_email
+        if request.form.get('password'):
+            user.password = generate_password_hash(request.form['password'])
+        db.session.commit()
+        flash('Profile updated.')
+        return redirect(url_for('profile'))
+    user_orders = Order.query.filter_by(user_id=user.id).order_by(Order.id.desc()).all()
+    return render_template('profile.html', user=user, orders=user_orders)
+
+
+@app.route('/newsletter/subscribe', methods=['POST'])
+def newsletter_subscribe():
+    email = request.form.get('email', '').strip()
+    if not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', email):
+        return jsonify(success=False, message='Invalid email address.')
+    existing = NewsletterSubscriber.query.filter_by(email=email).first()
+    if existing:
+        return jsonify(success=True, message='You are already subscribed!')
+    db.session.add(NewsletterSubscriber(email=email))
+    db.session.commit()
+    return jsonify(success=True, message='Thanks for subscribing!')
+
+
+@app.route('/cart/data')
+def cart_data():
+    if not current_user():
+        return jsonify(items=[], total=0)
+    items = CartItem.query.filter_by(user_id=session['user_id']).all()
+    total = sum(i.product.price * i.quantity for i in items)
+    return jsonify(
+        items=[{
+            'id':       i.id,
+            'name':     i.product.name,
+            'price':    i.product.price,
+            'quantity': i.quantity,
+            'subtotal': i.product.price * i.quantity,
+            'image':    i.product.image_url,
+        } for i in items],
+        total=total
+    )
+
+
+@app.route('/about')
+def about():
+    return render_template('pages/about.html', user=current_user())
+
+@app.route('/privacy')
+def privacy():
+    return render_template('pages/privacy.html', user=current_user())
+
+@app.route('/refund')
+def refund():
+    return render_template('pages/refund.html', user=current_user())
+
+@app.route('/terms')
+def terms():
+    return render_template('pages/terms.html', user=current_user())
+
+@app.route('/contact')
+def contact():
+    return render_template('pages/contact.html', user=current_user())
+
+
 # ═════════════════════════════════════════════════════════════════════════════
 #  HOME — product listing
 # ═════════════════════════════════════════════════════════════════════════════
@@ -145,8 +235,21 @@ def home():
     if not current_user():
         return redirect(url_for('login'))
 
-    products = Product.query.all()
-    return render_template('home.html', products=products, user=current_user())
+    q    = request.args.get('q', '').strip()
+    sort = request.args.get('sort', '')
+
+    query = Product.query
+    if q:
+        query = query.filter(
+            Product.name.ilike(f'%{q}%') | Product.description.ilike(f'%{q}%')
+        )
+    if sort == 'low':
+        query = query.order_by(Product.price.asc())
+    elif sort == 'high':
+        query = query.order_by(Product.price.desc())
+
+    products = query.all()
+    return render_template('home.html', products=products, user=current_user(), q=q, sort=sort)
 
 
 # ═════════════════════════════════════════════════════════════════════════════

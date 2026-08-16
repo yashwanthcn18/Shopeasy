@@ -1,0 +1,58 @@
+<!-- profile.html — User profile and order history -->
+{% extends 'base.html' %}
+{% block title %}My Profile{% endblock %}
+
+{% block content %}
+<h1 class="page-title">My Profile</h1>
+
+<div class="profile-layout">
+
+  <!-- Update details form -->
+  <div class="checkout-form-box">
+    <h3>Account Details</h3>
+    <form method="POST" action="{{ url_for('profile') }}">
+
+      <label>Full Name</label>
+      <input type="text" name="name" value="{{ user.name }}" required />
+
+      <label>Email</label>
+      <input type="email" name="email" value="{{ user.email }}" required />
+
+      <label>New Password <span style="font-weight:400; color:#999;">(leave blank to keep current)</span></label>
+      <div style="position:relative; margin-bottom:16px;">
+        <input type="password" name="password" id="profilePw" placeholder="••••••••"
+               style="width:100%; padding:10px 40px 10px 12px;" autocomplete="new-password" />
+        <button type="button"
+                onclick="var i=document.getElementById('profilePw'); i.type=i.type==='password'?'text':'password';"
+                style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:1rem;color:#999;">👁</button>
+      </div>
+
+      <button class="btn btn-dark" type="submit">Save Changes</button>
+    </form>
+  </div>
+
+  <!-- Recent orders summary -->
+  <div class="order-summary-box">
+    <h3>Recent Orders</h3>
+    {% if orders %}
+      {% for o in orders[:5] %}
+      <div style="border-bottom:1px solid #f0f0f0; padding:12px 0;">
+        <div style="display:flex; justify-content:space-between; font-size:0.88rem;">
+          <strong>Order #{{ o.id }}</strong>
+          <span class="status-badge">{{ o.status }}</span>
+        </div>
+        <div style="font-size:0.82rem; color:#777; margin-top:4px;">
+          ₹{{ o.total }} · {{ o.items|length }} item(s)
+        </div>
+      </div>
+      {% endfor %}
+      <a href="{{ url_for('orders') }}" style="display:block; margin-top:14px; font-size:0.85rem; color:#222; font-weight:600;">
+        View all orders →
+      </a>
+    {% else %}
+      <p style="font-size:0.88rem; color:#999;">No orders yet.</p>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

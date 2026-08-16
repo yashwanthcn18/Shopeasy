@@ -1,39 +1,68 @@
-<!-- base.html — Every page extends this. It provides the navbar and flash messages. -->
+<!-- base.html — Every page extends this. Navbar, cart drawer, newsletter popup, footer. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>{% block title %}Shop{% endblock %}</title>
+  <title>{% block title %}ShopEasy{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
 </head>
 <body>
 
-  <!-- Navbar — only show when a user is logged in -->
   {% if user %}
+  <!-- ── Navbar ── -->
   <nav>
     <a class="nav-logo" href="{{ url_for('home') }}">ShopEasy</a>
+
+    <!-- Search bar — submits GET to home -->
+    <form class="nav-search" action="{{ url_for('home') }}" method="GET">
+      <input type="text" name="q" placeholder="Search products…"
+             value="{{ request.args.get('q', '') }}" autocomplete="off" />
+      <button type="submit">🔍</button>
+    </form>
+
     <div class="nav-links">
       <a href="{{ url_for('home') }}">Home</a>
-      <a href="{{ url_for('cart') }}" style="position:relative;">
+      <!-- Cart icon — opens slide-out drawer -->
+      <a href="#" id="cartToggle" style="position:relative;">
         🛒 Cart
         {% if cart_count and cart_count > 0 %}
-        <span style="position:absolute; top:-8px; right:-10px; background:#e53935; color:#fff;
+        <span id="cartBadge" style="position:absolute; top:-8px; right:-10px; background:#e53935; color:#fff;
                      border-radius:50%; font-size:0.65rem; font-weight:700;
                      width:18px; height:18px; display:flex; align-items:center; justify-content:center;">
           {{ cart_count }}
         </span>
+        {% else %}
+        <span id="cartBadge" style="display:none; position:absolute; top:-8px; right:-10px; background:#e53935; color:#fff;
+                     border-radius:50%; font-size:0.65rem; font-weight:700;
+                     width:18px; height:18px; align-items:center; justify-content:center;"></span>
         {% endif %}
       </a>
       <a href="{{ url_for('orders') }}">My Orders</a>
+      <a href="{{ url_for('profile') }}">Profile</a>
       <a href="{{ url_for('logout') }}">Logout</a>
     </div>
   </nav>
+
+  <!-- ── Cart slide-out drawer ── -->
+  <div id="cartOverlay" class="cart-overlay" onclick="closeCart()"></div>
+  <div id="cartDrawer" class="cart-drawer">
+    <div class="cart-drawer-header">
+      <h3>Your Cart</h3>
+      <button onclick="closeCart()" class="cart-close">✕</button>
+    </div>
+    <div id="cartDrawerBody" class="cart-drawer-body">
+      <p class="empty-msg" style="padding:40px 0;">Loading…</p>
+    </div>
+    <div id="cartDrawerFooter" class="cart-drawer-footer" style="display:none;">
+      <div class="drawer-total">Total: <strong id="drawerTotal"></strong></div>
+      <a href="{{ url_for('cart') }}" class="btn btn-dark" style="display:block; text-align:center;">View Cart</a>
+      <a href="{{ url_for('checkout') }}" class="btn btn-checkout" style="display:block; text-align:center; margin-top:8px;">Checkout</a>
+    </div>
+  </div>
   {% endif %}
 
   <div class="container">
-
-    <!-- Flash messages (e.g. "Invalid password", "Order placed") -->
     {% with messages = get_flashed_messages() %}
       {% if messages %}
         {% for msg in messages %}
@@ -42,10 +71,127 @@
       {% endif %}
     {% endwith %}
 
-    <!-- Each page fills in this block -->
     {% block content %}{% endblock %}
-
   </div>
+
+  <!-- ── Footer ── -->
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <strong>ShopEasy</strong>
+        <p>Medal Holder Products</p>
+      </div>
+      <div class="footer-links">
+        <a href="{{ url_for('about') }}">About Us</a>
+        <a href="{{ url_for('privacy') }}">Privacy Policy</a>
+        <a href="{{ url_for('refund') }}">Refund Policy</a>
+        <a href="{{ url_for('terms') }}">Terms of Service</a>
+        <a href="{{ url_for('contact') }}">Contact Us</a>
+      </div>
+      <p class="footer-copy">© 2026 ShopEasy. All rights reserved.</p>
+    </div>
+  </footer>
+
+  {% if user %}
+  <!-- ── Newsletter popup — bottom right ── -->
+  <div id="newsletterPopup" class="newsletter-popup" style="display:none;">
+    <button class="newsletter-close" onclick="closeNewsletter()">✕</button>
+    <p class="newsletter-tag">FIRST TIMER?</p>
+    <h4>Stay in the loop!</h4>
+    <p style="font-size:0.82rem; color:#555; margin-bottom:12px;">
+      Sign up to hear about new arrivals, restocks, and online exclusives.
+    </p>
+    <form id="newsletterForm" onsubmit="subscribeNewsletter(event)">
+      <input type="email" id="newsletterEmail" placeholder="Enter your email" required
+             style="width:100%; padding:9px 12px; border:1px solid #ddd; border-radius:6px; font-size:0.88rem; margin-bottom:8px;" />
+      <p id="newsletterMsg" style="font-size:0.78rem; margin-bottom:6px; min-height:16px;"></p>
+      <button type="submit" class="btn btn-dark" style="width:100%; padding:10px;">Subscribe</button>
+    </form>
+  </div>
+  {% endif %}
+
+  <script>
+    /* ── Cart drawer ── */
+    document.getElementById('cartToggle') && document.getElementById('cartToggle').addEventListener('click', function(e) {
+      e.preventDefault();
+      openCart();
+    });
+
+    function openCart() {
+      document.getElementById('cartDrawer').classList.add('open');
+      document.getElementById('cartOverlay').classList.add('open');
+      document.body.style.overflow = 'hidden';
+      loadCartData();
+    }
+
+    function closeCart() {
+      document.getElementById('cartDrawer').classList.remove('open');
+      document.getElementById('cartOverlay').classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    function loadCartData() {
+      fetch('/cart/data')
+        .then(r => r.json())
+        .then(data => {
+          var body   = document.getElementById('cartDrawerBody');
+          var footer = document.getElementById('cartDrawerFooter');
+          if (data.items.length === 0) {
+            body.innerHTML = '<p class="empty-msg" style="padding:40px 0; text-align:center; color:#999;">Your cart is empty.</p>';
+            footer.style.display = 'none';
+            return;
+          }
+          var html = '';
+          data.items.forEach(function(item) {
+            html += '<div class="drawer-item">' +
+              '<img src="' + item.image + '" alt="' + item.name + '" />' +
+              '<div class="drawer-item-info">' +
+                '<p class="drawer-item-name">' + item.name + '</p>' +
+                '<p class="drawer-item-price">₹' + item.price + ' × ' + item.quantity + '</p>' +
+              '</div>' +
+              '<p class="drawer-item-sub">₹' + item.subtotal.toFixed(0) + '</p>' +
+            '</div>';
+          });
+          body.innerHTML = html;
+          document.getElementById('drawerTotal').textContent = '₹' + data.total.toFixed(0);
+          footer.style.display = 'block';
+        });
+    }
+
+    /* ── Newsletter popup ── */
+    (function() {
+      if (localStorage.getItem('newsletter_done')) return;
+      setTimeout(function() {
+        var popup = document.getElementById('newsletterPopup');
+        if (popup) popup.style.display = 'block';
+      }, 3000);
+    })();
+
+    function closeNewsletter() {
+      document.getElementById('newsletterPopup').style.display = 'none';
+      localStorage.setItem('newsletter_done', '1');
+    }
+
+    function subscribeNewsletter(e) {
+      e.preventDefault();
+      var email = document.getElementById('newsletterEmail').value;
+      var msg   = document.getElementById('newsletterMsg');
+      fetch('/newsletter/subscribe', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'email=' + encodeURIComponent(email)
+      })
+      .then(r => r.json())
+      .then(data => {
+        msg.textContent  = data.message;
+        msg.style.color  = data.success ? '#2e7d32' : '#c62828';
+        if (data.success) {
+          localStorage.setItem('newsletter_done', '1');
+          setTimeout(closeNewsletter, 2000);
+        }
+      });
+    }
+  </script>
 
 </body>
 </html>

@@ -56,3 +56,9 @@ class OrderItem(db.Model):
     price      = db.Column(db.Float, nullable=False)   # price at time of purchase
 
     product = db.relationship('Product')
+
+
+# ── Newsletter Subscriber ─────────────────────────────────────────────────────
+class NewsletterSubscriber(db.Model):
+    id    = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(150), unique=True, nullable=False)

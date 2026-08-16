@@ -1,25 +1,46 @@
-<!-- home.html — Product listing grid -->
+<!-- home.html — Product listing with search and sort -->
 {% extends 'base.html' %}
 {% block title %}Home{% endblock %}
 
 {% block content %}
-<h1 class="page-title">All Products</h1>
+<div class="home-toolbar">
+  <h1 class="page-title">All Products</h1>
+  <div class="sort-row">
+    <form method="GET" action="{{ url_for('home') }}" id="sortForm">
+      {% if q %}<input type="hidden" name="q" value="{{ q }}" />{% endif %}
+      <select name="sort" onchange="document.getElementById('sortForm').submit()" class="sort-select">
+        <option value=""      {% if sort == ''     %}selected{% endif %}>Sort: Default</option>
+        <option value="low"   {% if sort == 'low'  %}selected{% endif %}>Price: Low to High</option>
+        <option value="high"  {% if sort == 'high' %}selected{% endif %}>Price: High to Low</option>
+      </select>
+    </form>
+  </div>
+</div>
 
+{% if q %}
+<p class="search-result-msg">
+  Showing results for "<strong>{{ q }}</strong>"
+  <a href="{{ url_for('home') }}" style="margin-left:8px; font-size:0.82rem; color:#e53935;">Clear</a>
+</p>
+{% endif %}
+
+{% if products %}
 <div class="product-grid">
   {% for p in products %}
   <div class="product-card">
-
     <img src="{{ p.image_url }}" alt="{{ p.name }}" />
-
     <div class="product-info">
       <h3>{{ p.name }}</h3>
       <p class="desc">{{ p.description }}</p>
       <p class="price">₹{{ p.price }}</p>
-      <!-- Clicking this calls the add_to_cart route with the product id -->
       <a class="add-btn" href="{{ url_for('add_to_cart', product_id=p.id) }}">Add to Cart</a>
     </div>
-
   </div>
   {% endfor %}
 </div>
+{% else %}
+<div class="empty-msg">
+  <p>No products found{% if q %} for "{{ q }}"{% endif %}.</p>
+</div>
+{% endif %}
 {% endblock %}
