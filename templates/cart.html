@@ -1,9 +1,16 @@
-<!-- cart.html — Shows all items the user has added to their cart -->
+<!-- cart.html — Shows all items in the cart (works for both logged-in users and guests) -->
 {% extends 'base.html' %}
 {% block title %}Cart{% endblock %}
 
 {% block content %}
 <h1 class="page-title">Your Cart</h1>
+
+{% if is_guest %}
+<div class="flash" style="background:#e8f4fd; border-color:#90caf9; color:#1565c0;">
+  You are browsing as a guest. <a href="{{ url_for('login') }}" style="font-weight:600;">Log in</a> or
+  <a href="{{ url_for('signup') }}" style="font-weight:600;">create an account</a> to place an order.
+</div>
+{% endif %}
 
 {% if items %}
 
@@ -23,16 +30,24 @@
         <td>{{ item.product.name }}</td>
         <td>₹{{ item.product.price }}</td>
         <td>
-          <!-- + / - buttons to adjust quantity -->
           <div style="display:flex; align-items:center; gap:10px;">
+
+            {% if is_guest %}
+            <a href="{{ url_for('update_guest_cart', product_id=item.id, action='decrease') }}"
+            {% else %}
             <a href="{{ url_for('update_cart', item_id=item.id, action='decrease') }}"
+            {% endif %}
                style="width:28px; height:28px; border:1px solid #ddd; border-radius:6px;
                       display:flex; align-items:center; justify-content:center;
                       font-size:1rem; font-weight:700; color:#333; text-decoration:none;">−</a>
 
             <span style="font-weight:600; min-width:20px; text-align:center;">{{ item.quantity }}</span>
 
+            {% if is_guest %}
+            <a href="{{ url_for('update_guest_cart', product_id=item.id, action='increase') }}"
+            {% else %}
             <a href="{{ url_for('update_cart', item_id=item.id, action='increase') }}"
+            {% endif %}
                style="width:28px; height:28px; border:1px solid #ddd; border-radius:6px;
                       display:flex; align-items:center; justify-content:center;
                       font-size:1rem; font-weight:700; color:#333; text-decoration:none;">+</a>
@@ -40,7 +55,11 @@
         </td>
         <td>₹{{ item.product.price * item.quantity }}</td>
         <td>
+          {% if is_guest %}
+          <a class="btn btn-red" href="{{ url_for('remove_guest_cart', product_id=item.id) }}">Remove</a>
+          {% else %}
           <a class="btn btn-red" href="{{ url_for('remove_from_cart', item_id=item.id) }}">Remove</a>
+          {% endif %}
         </td>
       </tr>
       {% endfor %}
@@ -51,7 +70,11 @@
 
   <div class="cart-actions">
     <a class="btn btn-outline" href="{{ url_for('home') }}">Continue Shopping</a>
+    {% if is_guest %}
+    <a class="btn btn-dark" href="{{ url_for('login') }}">Log in to Checkout</a>
+    {% else %}
     <a class="btn btn-dark" href="{{ url_for('checkout') }}">Proceed to Checkout</a>
+    {% endif %}
   </div>
 
 {% else %}

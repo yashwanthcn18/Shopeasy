@@ -1,0 +1,24 @@
+<!-- verify_otp.html — Step 2: enter the OTP received on email -->
+{% extends 'base.html' %}
+{% block title %}Verify OTP{% endblock %}
+
+{% block content %}
+<div class="auth-box">
+  <h2>Enter OTP</h2>
+  <p class="hint" style="margin-bottom:20px; text-align:left; color:#555;">
+    A 6-digit code was sent to your email. It expires in 5 minutes.
+  </p>
+
+  <form method="POST" action="{{ url_for('verify_otp') }}">
+    <label>OTP Code</label>
+    <input type="text" name="otp" placeholder="123456" maxlength="6" required
+           autocomplete="one-time-code"
+           style="letter-spacing:0.3em; font-size:1.4rem; text-align:center;" />
+    <button class="btn btn-dark" type="submit" style="margin-top:4px;">Verify OTP</button>
+  </form>
+
+  <p class="hint" style="margin-top:16px;">
+    Didn't receive it? <a href="{{ url_for('forgot_password') }}">Resend OTP</a>
+  </p>
+</div>
+{% endblock %}

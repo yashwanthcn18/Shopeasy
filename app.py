@@ -3,8 +3,9 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
+from flask_mail import Mail, Message
 from models import db, User, Product, CartItem, Order, OrderItem, NewsletterSubscriber
-import os, re
+import os, re, random, time
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'change-this-secret-key')  # reads from environment on Render
@@ -13,7 +14,15 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = os.path.join('static', 'images')   # where uploaded images are saved
 ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'webp'}
 
+# ── Gmail config for OTP emails ───────────────────────────────────────────────
+app.config['MAIL_SERVER']   = 'smtp.gmail.com'
+app.config['MAIL_PORT']     = 587
+app.config['MAIL_USE_TLS']  = True
+app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')   # set in Render env vars
+app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')   # Gmail App Password
+
 db.init_app(app)
+mail = Mail(app)
 
 # ── Automatically pass cart_count to every template ───────────────────────────
 # This is how the badge number shows on the cart icon across all pages
@@ -21,6 +30,9 @@ db.init_app(app)
 def inject_cart_count():
     if 'user_id' in session:
         count = CartItem.query.filter_by(user_id=session['user_id']).count()
+        return {'cart_count': count}
+    elif session.get('guest'):
+        count = sum(session.get('guest_cart', {}).values())
         return {'cart_count': count}
     return {'cart_count': 0}
 
@@ -76,11 +88,35 @@ def seed_products():
     db.session.commit()
 
 
-# ── Helper: get the logged-in user (returns None if not logged in) ─────────────
+# ── Lightweight object returned for guest sessions ────────────────────────────
+class GuestUser:
+    name     = 'Guest'
+    email    = ''
+    id       = None
+    is_guest = True
+
+
+# ── Helper: get the logged-in user (returns GuestUser for guests, None otherwise)
 def current_user():
     if 'user_id' in session:
         return User.query.get(session['user_id'])
+    if session.get('guest'):
+        return GuestUser()
     return None
+
+
+# ── Merge guest session cart into the logged-in user's DB cart ─────────────────
+def merge_guest_cart(user_id):
+    guest_cart = session.pop('guest_cart', {})
+    session.pop('guest', None)
+    for pid_str, qty in guest_cart.items():
+        product_id = int(pid_str)
+        item = CartItem.query.filter_by(user_id=user_id, product_id=product_id).first()
+        if item:
+            item.quantity += qty
+        else:
+            db.session.add(CartItem(user_id=user_id, product_id=product_id, quantity=qty))
+    db.session.commit()
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -106,6 +142,7 @@ def signup():
         db.session.commit()
 
         session['user_id'] = user.id
+        merge_guest_cart(user.id)
         return redirect(url_for('home'))
 
     return render_template('signup.html')
@@ -125,9 +162,18 @@ def login():
             return redirect(url_for('login'))
 
         session['user_id'] = user.id
+        merge_guest_cart(user.id)
         return redirect(url_for('home'))
 
     return render_template('login.html')
+
+
+@app.route('/guest-login')
+def guest_login():
+    session['guest'] = True
+    if 'guest_cart' not in session:
+        session['guest_cart'] = {}
+    return redirect(url_for('home'))
 
 
 @app.route('/logout')
@@ -136,20 +182,91 @@ def logout():
     return redirect(url_for('login'))
 
 
+# ── Step 1: Enter email → receive OTP ────────────────────────────────────────
 @app.route('/forgot-password', methods=['GET', 'POST'])
 def forgot_password():
     if request.method == 'POST':
-        email        = request.form['email']
-        new_password = request.form['new_password']
-        user = User.query.filter_by(email=email).first()
+        email = request.form['email'].strip()
+        user  = User.query.filter_by(email=email).first()
         if not user:
             flash('No account found with that email.')
             return redirect(url_for('forgot_password'))
-        user.password = generate_password_hash(new_password)
-        db.session.commit()
-        flash('Password updated. Please log in with your new password.')
-        return redirect(url_for('login'))
+
+        otp = str(random.randint(100000, 999999))
+        session['otp']        = otp
+        session['otp_email']  = email
+        session['otp_expiry'] = time.time() + 300   # 5-minute expiry
+
+        # Send OTP via Gmail
+        try:
+            msg = Message(
+                subject  = 'ShopEasy — Your password reset OTP',
+                sender   = app.config['MAIL_USERNAME'],
+                recipients = [email]
+            )
+            msg.body = (
+                f"Hello,\n\n"
+                f"Your OTP for resetting your ShopEasy password is:\n\n"
+                f"  {otp}\n\n"
+                f"This code is valid for 5 minutes. Do not share it with anyone.\n\n"
+                f"If you did not request this, please ignore this email.\n\n"
+                f"— ShopEasy Team"
+            )
+            mail.send(msg)
+            flash(f'OTP sent to {email}. Check your inbox.')
+        except Exception:
+            flash('Could not send email. Please try again later or contact support.')
+            return redirect(url_for('forgot_password'))
+
+        return redirect(url_for('verify_otp'))
+
     return render_template('forgot_password.html')
+
+
+# ── Step 2: Enter OTP ─────────────────────────────────────────────────────────
+@app.route('/verify-otp', methods=['GET', 'POST'])
+def verify_otp():
+    if 'otp' not in session:
+        return redirect(url_for('forgot_password'))
+
+    if request.method == 'POST':
+        entered = request.form['otp'].strip()
+
+        if time.time() > session.get('otp_expiry', 0):
+            session.pop('otp', None)
+            flash('OTP has expired. Please request a new one.')
+            return redirect(url_for('forgot_password'))
+
+        if entered != session['otp']:
+            flash('Incorrect OTP. Please try again.')
+            return redirect(url_for('verify_otp'))
+
+        session['otp_verified'] = True
+        session.pop('otp', None)
+        return redirect(url_for('reset_password'))
+
+    return render_template('verify_otp.html')
+
+
+# ── Step 3: Set new password ──────────────────────────────────────────────────
+@app.route('/reset-password', methods=['GET', 'POST'])
+def reset_password():
+    if not session.get('otp_verified'):
+        return redirect(url_for('forgot_password'))
+
+    if request.method == 'POST':
+        email        = session.get('otp_email')
+        new_password = request.form['new_password']
+        user = User.query.filter_by(email=email).first()
+        if user:
+            user.password = generate_password_hash(new_password)
+            db.session.commit()
+        session.pop('otp_verified', None)
+        session.pop('otp_email', None)
+        flash('Password updated successfully. Please log in.')
+        return redirect(url_for('login'))
+
+    return render_template('reset_password.html')
 
 
 @app.route('/profile', methods=['GET', 'POST'])
@@ -190,6 +307,17 @@ def newsletter_subscribe():
 def cart_data():
     if not current_user():
         return jsonify(items=[], total=0)
+
+    if session.get('guest'):
+        result, total = [], 0
+        for pid_str, qty in session.get('guest_cart', {}).items():
+            p = Product.query.get(int(pid_str))
+            if p:
+                result.append({'id': p.id, 'name': p.name, 'price': p.price,
+                                'quantity': qty, 'subtotal': p.price * qty, 'image': p.image_url})
+                total += p.price * qty
+        return jsonify(items=result, total=total)
+
     items = CartItem.query.filter_by(user_id=session['user_id']).all()
     total = sum(i.product.price * i.quantity for i in items)
     return jsonify(
@@ -261,28 +389,30 @@ def add_to_cart(product_id):
     if not current_user():
         return redirect(url_for('login'))
 
-    user_id = session['user_id']
+    if session.get('guest'):
+        cart = session.get('guest_cart', {})
+        key  = str(product_id)
+        cart[key] = cart.get(key, 0) + 1
+        session['guest_cart'] = cart
+        return redirect(url_for('home'))
 
-    # If the item is already in cart, just increase quantity
+    user_id = session['user_id']
     item = CartItem.query.filter_by(user_id=user_id, product_id=product_id).first()
     if item:
         item.quantity += 1
     else:
-        item = CartItem(user_id=user_id, product_id=product_id, quantity=1)
-        db.session.add(item)
-
+        db.session.add(CartItem(user_id=user_id, product_id=product_id, quantity=1))
     db.session.commit()
-    return redirect(url_for('home'))   # stay on home page after adding
+    return redirect(url_for('home'))
 
 
-# ── Update quantity (+ or -) ──────────────────────────────────────────────────
+# ── Update quantity for logged-in users ───────────────────────────────────────
 @app.route('/cart/update/<int:item_id>/<action>')
 def update_cart(item_id, action):
     if not current_user():
         return redirect(url_for('login'))
 
     item = CartItem.query.get_or_404(item_id)
-
     if action == 'increase':
         item.quantity += 1
         db.session.commit()
@@ -291,10 +421,24 @@ def update_cart(item_id, action):
             item.quantity -= 1
             db.session.commit()
         else:
-            # If quantity hits 0, remove the item entirely
             db.session.delete(item)
             db.session.commit()
+    return redirect(url_for('cart'))
 
+
+# ── Update quantity for guests ────────────────────────────────────────────────
+@app.route('/cart/update-guest/<int:product_id>/<action>')
+def update_guest_cart(product_id, action):
+    cart = session.get('guest_cart', {})
+    key  = str(product_id)
+    if action == 'increase':
+        cart[key] = cart.get(key, 0) + 1
+    elif action == 'decrease':
+        if cart.get(key, 1) > 1:
+            cart[key] -= 1
+        else:
+            cart.pop(key, None)
+    session['guest_cart'] = cart
     return redirect(url_for('cart'))
 
 
@@ -306,14 +450,33 @@ def remove_from_cart(item_id):
     return redirect(url_for('cart'))
 
 
+@app.route('/cart/remove-guest/<int:product_id>')
+def remove_guest_cart(product_id):
+    cart = session.get('guest_cart', {})
+    cart.pop(str(product_id), None)
+    session['guest_cart'] = cart
+    return redirect(url_for('cart'))
+
+
 @app.route('/cart')
 def cart():
     if not current_user():
         return redirect(url_for('login'))
 
+    if session.get('guest'):
+        guest_cart = session.get('guest_cart', {})
+        items, total = [], 0
+        for pid_str, qty in guest_cart.items():
+            p = Product.query.get(int(pid_str))
+            if p:
+                items.append({'product': p, 'quantity': qty, 'id': p.id})
+                total += p.price * qty
+        return render_template('cart.html', items=items, total=total,
+                               user=current_user(), is_guest=True)
+
     items = CartItem.query.filter_by(user_id=session['user_id']).all()
     total = sum(i.product.price * i.quantity for i in items)
-    return render_template('cart.html', items=items, total=total, user=current_user())
+    return render_template('cart.html', items=items, total=total, user=current_user(), is_guest=False)
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -323,6 +486,9 @@ def cart():
 @app.route('/checkout', methods=['GET', 'POST'])
 def checkout():
     if not current_user():
+        return redirect(url_for('login'))
+    if session.get('guest'):
+        flash('Please log in or create an account to complete your order.')
         return redirect(url_for('login'))
 
     user_id = session['user_id']
