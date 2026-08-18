@@ -3,9 +3,8 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
-from flask_mail import Mail, Message
 from models import db, User, Product, CartItem, Order, OrderItem, NewsletterSubscriber
-import os, re, random, time
+import os, re, random, time, requests
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'change-this-secret-key')  # reads from environment on Render
@@ -14,16 +13,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = os.path.join('static', 'images')   # where uploaded images are saved
 ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'webp'}
 
-# ── Gmail config for OTP emails ───────────────────────────────────────────────
-app.config['MAIL_SERVER']   = 'smtp.gmail.com'
-app.config['MAIL_PORT']     = 587
-app.config['MAIL_USE_TLS']  = True
-app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
-app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
-app.config['MAIL_TIMEOUT']  = 10   # fail fast if Gmail unreachable
-
 db.init_app(app)
-mail = Mail(app)
 
 # ── Automatically pass cart_count to every template ───────────────────────────
 # This is how the badge number shows on the cart icon across all pages
@@ -198,25 +188,34 @@ def forgot_password():
         session['otp_email']  = email
         session['otp_expiry'] = time.time() + 300   # 5-minute expiry
 
-        # Send OTP via Gmail
+        # Send OTP via Brevo HTTP API (works on Render free tier)
         try:
-            msg = Message(
-                subject  = 'ShopEasy — Your password reset OTP',
-                sender   = app.config['MAIL_USERNAME'],
-                recipients = [email]
+            resp = requests.post(
+                'https://api.brevo.com/v3/smtp/email',
+                headers={
+                    'api-key': os.environ.get('BREVO_API_KEY', ''),
+                    'Content-Type': 'application/json',
+                },
+                json={
+                    'sender':     {'name': 'ShopEasy', 'email': os.environ.get('MAIL_USERNAME', 'no-reply@shopeasy.in')},
+                    'to':         [{'email': email}],
+                    'subject':    'ShopEasy — Your password reset OTP',
+                    'textContent': (
+                        f"Hello,\n\n"
+                        f"Your OTP for resetting your ShopEasy password is:\n\n"
+                        f"  {otp}\n\n"
+                        f"This code is valid for 5 minutes. Do not share it with anyone.\n\n"
+                        f"If you did not request this, please ignore this email.\n\n"
+                        f"— ShopEasy Team"
+                    ),
+                },
+                timeout=10
             )
-            msg.body = (
-                f"Hello,\n\n"
-                f"Your OTP for resetting your ShopEasy password is:\n\n"
-                f"  {otp}\n\n"
-                f"This code is valid for 5 minutes. Do not share it with anyone.\n\n"
-                f"If you did not request this, please ignore this email.\n\n"
-                f"— ShopEasy Team"
-            )
-            mail.send(msg)
-            flash(f'OTP sent to {email}. Check your inbox.')
+            if resp.status_code not in (200, 201):
+                raise Exception(resp.text)
+            flash(f'OTP sent to {email}. Check your inbox (and spam folder).')
         except Exception:
-            flash('Could not send email. Please try again later or contact support.')
+            flash('Could not send email. Please check your email address and try again.')
             return redirect(url_for('forgot_password'))
 
         return redirect(url_for('verify_otp'))

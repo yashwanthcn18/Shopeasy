@@ -1,5 +1,5 @@
 flask
 flask-sqlalchemy
-flask-mail
 werkzeug
 psycopg2-binary
+requests
