@@ -14,35 +14,59 @@
   <nav>
     <a class="nav-logo" href="{{ url_for('home') }}">ShopEasy</a>
 
-    <!-- Search bar — submits GET to home -->
+    <!-- Search bar — desktop only -->
     <form class="nav-search" action="{{ url_for('home') }}" method="GET">
       <input type="text" name="q" placeholder="Search products…"
              value="{{ request.args.get('q', '') }}" autocomplete="off" />
       <button type="submit">🔍</button>
     </form>
 
+    <!-- Desktop nav links -->
     <div class="nav-links">
       <a href="{{ url_for('home') }}">Home</a>
-      <!-- Cart icon — opens slide-out drawer -->
       <a href="#" id="cartToggle" style="position:relative;">
         🛒 Cart
         {% if cart_count and cart_count > 0 %}
-        <span id="cartBadge" style="position:absolute; top:-8px; right:-10px; background:#e53935; color:#fff;
-                     border-radius:50%; font-size:0.65rem; font-weight:700;
-                     width:18px; height:18px; display:flex; align-items:center; justify-content:center;">
+        <span id="cartBadge" style="position:absolute;top:-8px;right:-10px;background:#e53935;color:#fff;
+                     border-radius:50%;font-size:0.65rem;font-weight:700;
+                     width:18px;height:18px;display:flex;align-items:center;justify-content:center;">
           {{ cart_count }}
         </span>
         {% else %}
-        <span id="cartBadge" style="display:none; position:absolute; top:-8px; right:-10px; background:#e53935; color:#fff;
-                     border-radius:50%; font-size:0.65rem; font-weight:700;
-                     width:18px; height:18px; align-items:center; justify-content:center;"></span>
+        <span id="cartBadge" style="display:none;position:absolute;top:-8px;right:-10px;background:#e53935;color:#fff;
+                     border-radius:50%;font-size:0.65rem;font-weight:700;
+                     width:18px;height:18px;align-items:center;justify-content:center;"></span>
         {% endif %}
       </a>
       <a href="{{ url_for('orders') }}">My Orders</a>
       <a href="{{ url_for('profile') }}">Profile</a>
       <a href="{{ url_for('logout') }}">Logout</a>
     </div>
+
+    <!-- Mobile right side: cart icon + hamburger -->
+    <div class="mobile-nav-right">
+      <a href="#" id="cartToggleMobile" style="position:relative; font-size:1.3rem; margin-right:4px;">
+        🛒
+        {% if cart_count and cart_count > 0 %}
+        <span style="position:absolute;top:-6px;right:-8px;background:#e53935;color:#fff;
+                     border-radius:50%;font-size:0.6rem;font-weight:700;
+                     width:16px;height:16px;display:flex;align-items:center;justify-content:center;">
+          {{ cart_count }}
+        </span>
+        {% endif %}
+      </a>
+      <button class="hamburger-btn" onclick="toggleMobileMenu()">☰</button>
+    </div>
   </nav>
+
+  <!-- Mobile dropdown menu -->
+  <div id="mobileNavMenu" class="mobile-nav-menu">
+    <a href="{{ url_for('home') }}">🏠 Home</a>
+    <a href="{{ url_for('cart') }}">🛒 Cart {% if cart_count and cart_count > 0 %}({{ cart_count }}){% endif %}</a>
+    <a href="{{ url_for('orders') }}">📦 My Orders</a>
+    <a href="{{ url_for('profile') }}">👤 Profile</a>
+    <a href="{{ url_for('logout') }}" style="color:#e53935;">⬅ Logout</a>
+  </div>
 
   <!-- ── Cart slide-out drawer ── -->
   <div id="cartOverlay" class="cart-overlay" onclick="closeCart()"></div>
@@ -111,6 +135,24 @@
   {% endif %}
 
   <script>
+    /* ── Mobile nav menu ── */
+    function toggleMobileMenu() {
+      var m = document.getElementById('mobileNavMenu');
+      m.classList.toggle('open');
+    }
+    document.addEventListener('click', function(e) {
+      var menu = document.getElementById('mobileNavMenu');
+      if (menu && !menu.contains(e.target) && !e.target.closest('.hamburger-btn')) {
+        menu.classList.remove('open');
+      }
+    });
+
+    /* ── Mobile cart toggle ── */
+    document.getElementById('cartToggleMobile') && document.getElementById('cartToggleMobile').addEventListener('click', function(e) {
+      e.preventDefault();
+      openCart();
+    });
+
     /* ── Cart drawer ── */
     document.getElementById('cartToggle') && document.getElementById('cartToggle').addEventListener('click', function(e) {
       e.preventDefault();

@@ -5,6 +5,14 @@
 {% block content %}
 <div class="home-toolbar">
   <h1 class="page-title">All Products</h1>
+
+  <!-- Search bar visible only on mobile -->
+  <form class="home-search-mobile" action="{{ url_for('home') }}" method="GET">
+    <input type="text" name="q" placeholder="Search products…"
+           value="{{ q }}" autocomplete="off" />
+    <button type="submit">🔍</button>
+  </form>
+
   <div class="sort-row">
     <form method="GET" action="{{ url_for('home') }}" id="sortForm">
       {% if q %}<input type="hidden" name="q" value="{{ q }}" />{% endif %}

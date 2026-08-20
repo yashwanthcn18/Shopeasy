@@ -395,6 +395,45 @@ nav {
 }
 
 
+/* ── Mobile hamburger + dropdown ───────────────────────────────────────────── */
+.mobile-nav-right {
+  display: none;
+  align-items: center;
+  gap: 4px;
+}
+
+.hamburger-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  color: #222;
+}
+
+.mobile-nav-menu {
+  display: none;
+  flex-direction: column;
+  background: #fff;
+  border-bottom: 1px solid #e0e0e0;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.mobile-nav-menu.open {
+  display: flex;
+}
+
+.mobile-nav-menu a {
+  padding: 14px 20px;
+  font-size: 0.95rem;
+  color: #333;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.mobile-nav-menu a:hover {
+  background: #f5f5f5;
+}
+
 /* ── Nav search ────────────────────────────────────────────────────────────── */
 .nav-search {
   display: flex;
@@ -449,6 +488,29 @@ nav {
   background: #fff;
   cursor: pointer;
   outline: none;
+}
+
+/* Mobile-only search bar shown on home page */
+.home-search-mobile {
+  display: none;
+}
+
+.home-search-mobile input {
+  flex: 1;
+  padding: 9px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px 0 0 6px;
+  font-size: 0.9rem;
+  outline: none;
+}
+
+.home-search-mobile button {
+  padding: 9px 14px;
+  background: #222;
+  color: #fff;
+  border: none;
+  border-radius: 0 6px 6px 0;
+  cursor: pointer;
 }
 
 .search-result-msg {
@@ -817,11 +879,16 @@ nav {
     padding: 16px;
   }
 
-  /* Nav search — hidden on mobile, use full page search */
+  /* Nav search — hidden on mobile (shown inline on home page instead) */
   .nav-search { display: none; }
+  .nav-links { display: none; }
+  .mobile-nav-right { display: flex; }
 
-  /* Home toolbar */
-  .home-toolbar { flex-direction: column; align-items: flex-start; }
+  /* Home toolbar — search + sort stack vertically */
+  .home-toolbar { flex-direction: column; align-items: stretch; }
+  .home-search-mobile { display: flex; }
+  .sort-row { width: 100%; }
+  .sort-select { width: 100%; }
 
   /* Profile — stack on mobile */
   .profile-layout { grid-template-columns: 1fr; }
