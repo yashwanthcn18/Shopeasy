@@ -188,34 +188,33 @@ def forgot_password():
         session['otp_email']  = email
         session['otp_expiry'] = time.time() + 300   # 5-minute expiry
 
-        # Send OTP via Brevo HTTP API (works on Render free tier)
+        # Send OTP via Resend HTTP API
         try:
             resp = requests.post(
-                'https://api.brevo.com/v3/smtp/email',
+                'https://api.resend.com/emails',
                 headers={
-                    'api-key': os.environ.get('BREVO_API_KEY', ''),
-                    'Content-Type': 'application/json',
+                    'Authorization': f'Bearer {os.environ.get("RESEND_API_KEY", "")}',
+                    'Content-Type':  'application/json',
                 },
                 json={
-                    'sender':     {'name': 'ShopEasy', 'email': os.environ.get('MAIL_USERNAME', 'no-reply@shopeasy.in')},
-                    'to':         [{'email': email}],
-                    'subject':    'ShopEasy — Your password reset OTP',
-                    'textContent': (
+                    'from':    'ShopEasy <onboarding@resend.dev>',
+                    'to':      [email],
+                    'subject': 'ShopEasy — Your password reset OTP',
+                    'text':    (
                         f"Hello,\n\n"
                         f"Your OTP for resetting your ShopEasy password is:\n\n"
                         f"  {otp}\n\n"
                         f"This code is valid for 5 minutes. Do not share it with anyone.\n\n"
-                        f"If you did not request this, please ignore this email.\n\n"
                         f"— ShopEasy Team"
                     ),
                 },
                 timeout=10
             )
-            if resp.status_code not in (200, 201):
+            if resp.status_code not in (200, 201, 202):
                 raise Exception(resp.text)
             flash(f'OTP sent to {email}. Check your inbox (and spam folder).')
         except Exception:
-            flash('Could not send email. Please check your email address and try again.')
+            flash('Could not send email. Please try again later.')
             return redirect(url_for('forgot_password'))
 
         return redirect(url_for('verify_otp'))
