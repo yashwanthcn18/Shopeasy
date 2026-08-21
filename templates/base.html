@@ -16,6 +16,7 @@
       <a href="{{ url_for('home') }}">Shop</a>
       {% if user %}
       <a href="{{ url_for('orders') }}">Orders</a>
+      <a href="{{ url_for('logout') }}" class="logout-link">Logout</a>
       {% endif %}
     </div>
 
