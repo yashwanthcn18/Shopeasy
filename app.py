@@ -8,7 +8,7 @@ import os, re, random, time, requests, secrets
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'change-this-secret-key')  # reads from environment on Render
-app.permanent_session_lifetime = 1800   # 30 minutes of inactivity logs out
+app.permanent_session_lifetime = 60 * 60 * 24 * 30   # session lasts 30 days — only clears on manual logout
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///shop.db')   # uses Supabase on Render, SQLite locally
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = os.path.join('static', 'images')   # where uploaded images are saved
