@@ -4,7 +4,8 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from models import db, User, Product, CartItem, Order, OrderItem, NewsletterSubscriber
-import os, re, random, time, requests
+import os, re, random, time, requests, smtplib, secrets
+from email.mime.text import MIMEText
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'change-this-secret-key')  # reads from environment on Render
@@ -15,6 +16,27 @@ app.config['UPLOAD_FOLDER'] = os.path.join('static', 'images')   # where uploade
 ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'webp'}
 
 db.init_app(app)
+
+
+# ── Email helper — Gmail SMTP SSL port 465 ────────────────────────────────────
+def send_email(to_email, subject, body):
+    username = os.environ.get('MAIL_USERNAME', '')
+    password = os.environ.get('MAIL_PASSWORD', '')
+    if not username or not password:
+        return False
+    try:
+        msg = MIMEText(body)
+        msg['Subject'] = subject
+        msg['From']    = f'ShopEasy <{username}>'
+        msg['To']      = to_email
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=15) as server:
+            server.login(username, password)
+            server.sendmail(username, to_email, msg.as_string())
+        return True
+    except Exception as e:
+        app.logger.error(f'Email failed: {e}')
+        return False
+
 
 # ── Automatically pass cart_count to every template ───────────────────────────
 # This is how the badge number shows on the cart icon across all pages
@@ -127,15 +149,25 @@ def signup():
             flash('Email already registered. Please log in.')
             return redirect(url_for('login'))
 
-        # Hash the password before saving — never store plain text
         hashed = generate_password_hash(password)
-        user   = User(name=name, email=email, password=hashed)
+        token  = secrets.token_urlsafe(32)
+        user   = User(name=name, email=email, password=hashed,
+                      is_verified=False, verify_token=token)
         db.session.add(user)
         db.session.commit()
 
-        session.permanent = True
+        # Send verification email
+        link = url_for('verify_email', token=token, _external=True)
+        send_email(
+            email,
+            'ShopEasy — Please verify your email',
+            f"Hi {name},\n\nClick the link below to verify your ShopEasy account:\n\n{link}\n\nThis link works only once.\n\n— ShopEasy Team"
+        )
+
+        session.permanent  = True
         session['user_id'] = user.id
         merge_guest_cart(user.id)
+        flash('Account created! Please check your email to verify your account.')
         return redirect(url_for('home'))
 
     return render_template('signup.html')
@@ -160,6 +192,19 @@ def login():
         return redirect(url_for('home'))
 
     return render_template('login.html')
+
+
+@app.route('/verify-email/<token>')
+def verify_email(token):
+    user = User.query.filter_by(verify_token=token).first()
+    if not user:
+        flash('Invalid or already used verification link.')
+        return redirect(url_for('login'))
+    user.is_verified  = True
+    user.verify_token = None
+    db.session.commit()
+    flash('Email verified! You are now fully verified.')
+    return redirect(url_for('home'))
 
 
 @app.route('/guest-login')
@@ -191,34 +236,15 @@ def forgot_password():
         session['otp_email']  = email
         session['otp_expiry'] = time.time() + 300   # 5-minute expiry
 
-        # Send OTP via Resend HTTP API
-        try:
-            resp = requests.post(
-                'https://api.resend.com/emails',
-                headers={
-                    'Authorization': f'Bearer {os.environ.get("RESEND_API_KEY", "")}',
-                    'Content-Type':  'application/json',
-                },
-                json={
-                    'from':    'ShopEasy <onboarding@resend.dev>',
-                    'to':      [email],
-                    'subject': 'ShopEasy — Your password reset OTP',
-                    'text':    (
-                        f"Hello,\n\n"
-                        f"Your OTP for resetting your ShopEasy password is:\n\n"
-                        f"  {otp}\n\n"
-                        f"This code is valid for 5 minutes. Do not share it with anyone.\n\n"
-                        f"— ShopEasy Team"
-                    ),
-                },
-                timeout=10
-            )
-            if resp.status_code not in (200, 201, 202):
-                raise Exception(resp.text)
-            flash(f'OTP sent to {email}. Check your inbox (and spam folder).')
-        except Exception:
-            flash('Could not send email. Please try again later.')
+        sent = send_email(
+            email,
+            'ShopEasy — Your password reset OTP',
+            f"Hello,\n\nYour OTP for resetting your ShopEasy password is:\n\n  {otp}\n\nThis code is valid for 5 minutes. Do not share it with anyone.\n\n— ShopEasy Team"
+        )
+        if not sent:
+            flash('Could not send email. Please check MAIL credentials in Render.')
             return redirect(url_for('forgot_password'))
+        flash(f'OTP sent to {email}. Check your inbox and spam folder.')
 
         return redirect(url_for('verify_otp'))
 
@@ -362,9 +388,6 @@ def contact():
 
 @app.route('/')
 def home():
-    if not current_user():
-        return redirect(url_for('login'))
-
     q    = request.args.get('q', '').strip()
     sort = request.args.get('sort', '')
 

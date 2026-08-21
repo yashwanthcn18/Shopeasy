@@ -41,7 +41,11 @@
       <h3>{{ p.name }}</h3>
       <p class="desc">{{ p.description }}</p>
       <p class="price">₹{{ p.price }}</p>
+      {% if user %}
       <a class="add-btn" href="{{ url_for('add_to_cart', product_id=p.id) }}">Add to Cart</a>
+      {% else %}
+      <a class="add-btn" href="{{ url_for('login') }}" style="background:#555;">Login to Buy</a>
+      {% endif %}
     </div>
   </div>
   {% endfor %}
