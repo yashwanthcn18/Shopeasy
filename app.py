@@ -922,6 +922,11 @@ with app.app_context():
         except Exception:
             pass  # column already exists — safe to ignore
 
+    # Mark all existing users (who have no verify_token) as verified
+    # so they aren't locked out after the verification feature was added
+    User.query.filter_by(verify_token=None, is_verified=False).update({'is_verified': True})
+    db.session.commit()
+
     seed_products()
 
 if __name__ == '__main__':
