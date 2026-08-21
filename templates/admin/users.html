@@ -1,4 +1,4 @@
-<!-- Admin users — view all registered customers -->
+<!-- Admin users — view and delete registered customers -->
 {% extends 'admin/base.html' %}
 {% block title %}Users{% endblock %}
 
@@ -12,7 +12,9 @@
         <th>ID</th>
         <th>Name</th>
         <th>Email</th>
-        <th>Total Orders</th>
+        <th>Verified</th>
+        <th>Orders</th>
+        <th>Action</th>
       </tr>
     </thead>
     <tbody>
@@ -21,10 +23,24 @@
         <td>{{ user.id }}</td>
         <td>{{ user.name }}</td>
         <td>{{ user.email }}</td>
+        <td>
+          {% if user.is_verified %}
+            <span class="badge badge-delivered">Yes</span>
+          {% else %}
+            <span class="badge badge-placed">No</span>
+          {% endif %}
+        </td>
         <td>{{ user.id | count_orders }}</td>
+        <td>
+          <!-- Confirm before deleting to prevent accidental deletion -->
+          <form method="POST" action="{{ url_for('admin_delete_user', user_id=user.id) }}"
+                onsubmit="return confirm('Delete {{ user.name }}? This also deletes their cart and orders.')">
+            <button type="submit" class="btn btn-red" style="padding:5px 12px; font-size:0.78rem;">Delete</button>
+          </form>
+        </td>
       </tr>
       {% else %}
-      <tr><td colspan="4" style="color:#94a3b8; text-align:center; padding:24px;">No users yet.</td></tr>
+      <tr><td colspan="6" style="color:#94a3b8; text-align:center; padding:24px;">No users yet.</td></tr>
       {% endfor %}
     </tbody>
   </table>

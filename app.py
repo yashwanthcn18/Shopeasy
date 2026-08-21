@@ -897,6 +897,26 @@ def admin_users():
     return render_template('admin/users.html', users=users)
 
 
+# ── Delete user (also removes their cart and orders) ──────────────────────────
+@app.route('/admin/users/delete/<int:user_id>', methods=['POST'])
+def admin_delete_user(user_id):
+    if not admin_required():
+        return redirect(url_for('admin_login'))
+
+    user = User.query.get_or_404(user_id)
+
+    # Delete related cart items and orders first to avoid foreign key errors
+    CartItem.query.filter_by(user_id=user_id).delete()
+    for order in Order.query.filter_by(user_id=user_id).all():
+        OrderItem.query.filter_by(order_id=order.id).delete()
+    Order.query.filter_by(user_id=user_id).delete()
+
+    db.session.delete(user)
+    db.session.commit()
+    flash(f'User {user.name} deleted.')
+    return redirect(url_for('admin_users'))
+
+
 # ═════════════════════════════════════════════════════════════════════════════
 #  ENTRY POINT
 # ═════════════════════════════════════════════════════════════════════════════
