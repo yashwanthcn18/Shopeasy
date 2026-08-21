@@ -1,4 +1,3 @@
-<!-- signup.html — New user registration form -->
 {% extends 'base.html' %}
 {% block title %}Sign Up{% endblock %}
 {% block body_class %}auth-page{% endblock %}
@@ -10,14 +9,27 @@
 
   <form method="POST" action="{{ url_for('signup') }}">
 
-    <label>Full Name</label>
-    <input type="text" name="name" placeholder="John Doe" required />
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+      <div>
+        <label>First Name</label>
+        <input type="text" name="first_name" placeholder="John" required />
+      </div>
+      <div>
+        <label>Last Name</label>
+        <input type="text" name="last_name" placeholder="Doe" />
+      </div>
+    </div>
 
     <label>Email</label>
     <input type="email" name="email" placeholder="you@example.com" required />
 
     <label>Password</label>
-    <input type="password" name="password" placeholder="••••••••" required />
+    <div style="position:relative; margin-bottom:16px;">
+      <input type="password" name="password" id="signupPw" placeholder="Min 8 characters" required
+             style="width:100%; padding:10px 40px 10px 12px;" />
+      <button type="button" onclick="var i=document.getElementById('signupPw'); i.type=i.type==='password'?'text':'password';"
+              style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:1rem;color:#999;">👁</button>
+    </div>
 
     <button class="btn btn-dark" type="submit">Create Account</button>
 

@@ -3,7 +3,7 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
-from models import db, User, Product, CartItem, Order, OrderItem, NewsletterSubscriber, Address
+from models import db, User, Product, CartItem, Order, OrderItem, NewsletterSubscriber, Address, Payment
 import os, re, random, time, requests, secrets, hmac, hashlib
 import razorpay
 from authlib.integrations.flask_client import OAuth
@@ -187,28 +187,36 @@ def merge_guest_cart(user_id):
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
     if request.method == 'POST':
-        name     = request.form['name']
-        email    = request.form['email']
-        password = request.form['password']
+        first_name = request.form.get('first_name', '').strip()
+        last_name  = request.form.get('last_name', '').strip()
+        name       = request.form.get('name', '').strip()   # fallback for old form
+        email      = request.form['email']
+        password   = request.form['password']
 
-        # Check if email already exists
+        # Support both old single-name and new first/last name forms
+        if first_name:
+            display_name = f"{first_name} {last_name}".strip()
+        else:
+            display_name = name
+            first_name   = name.split()[0] if name else ''
+            last_name    = ' '.join(name.split()[1:]) if len(name.split()) > 1 else ''
+
         if User.query.filter_by(email=email).first():
             flash('Email already registered. Please log in.')
             return redirect(url_for('login'))
 
         hashed = generate_password_hash(password)
         token  = secrets.token_urlsafe(32)
-        user   = User(name=name, email=email, password=hashed,
-                      is_verified=False, verify_token=token)
+        user   = User(name=display_name, first_name=first_name, last_name=last_name,
+                      email=email, password=hashed, is_verified=False, verify_token=token)
         db.session.add(user)
         db.session.commit()
 
-        # Send verification email — do NOT log in yet, require verification first
         link = url_for('verify_email', token=token, _external=True)
         sent = send_email(
             email,
-            'ShopEasy — Please verify your email',
-            f"Hi {name},\n\nClick the link below to verify your ShopEasy account:\n\n{link}\n\nThis link works only once.\n\n— ShopEasy Team"
+            'KAPIQ — Please verify your email',
+            f"Hi {display_name},\n\nClick the link below to verify your KAPIQ account:\n\n{link}\n\nThis link works only once.\n\n— KAPIQ Team"
         )
 
         if sent:
@@ -462,7 +470,12 @@ def profile():
         action = request.form.get('action')
 
         if action == 'update_details':
-            user.name  = request.form.get('name', user.name).strip()
+            first = request.form.get('first_name', '').strip()
+            last  = request.form.get('last_name', '').strip()
+            if first:
+                user.first_name = first
+                user.last_name  = last
+                user.name       = f"{first} {last}".strip()
             user.phone = request.form.get('phone', '').strip()
             new_pw = request.form.get('password', '').strip()
             if new_pw:
@@ -839,11 +852,21 @@ def verify_payment():
 
     for i in items:
         db.session.add(OrderItem(
-            order_id   = order.id,
-            product_id = i.product_id,
-            quantity   = i.quantity,
-            price      = i.product.price,
+            order_id     = order.id,
+            product_id   = i.product_id,
+            product_name = i.product.name,
+            quantity     = i.quantity,
+            price        = i.product.price,
         ))
+
+    db.session.add(Payment(
+        order_id            = order.id,
+        razorpay_order_id   = rz_order_id,
+        razorpay_payment_id = rz_payment_id,
+        amount              = total,
+        currency            = 'INR',
+        status              = 'succeeded',
+    ))
 
     CartItem.query.filter_by(user_id=user_id).delete()
     session.pop('pending_address', None)
@@ -965,8 +988,19 @@ def admin_add_product():
             file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
             image_url = f'/static/images/{filename}'
 
-        product = Product(name=name, description=description, price=price,
-                          stock=stock, image_url=image_url)
+        compare_price     = request.form.get('compare_price')
+        product = Product(
+            name              = name,
+            description       = description,
+            short_description = request.form.get('short_description', ''),
+            price             = price,
+            compare_price     = float(compare_price) if compare_price else None,
+            sku               = request.form.get('sku', '').strip() or None,
+            brand             = request.form.get('brand', '').strip(),
+            category          = request.form.get('category', '').strip(),
+            stock             = stock,
+            image_url         = image_url,
+        )
         db.session.add(product)
         db.session.commit()
         flash('Product added.')
@@ -984,12 +1018,17 @@ def admin_edit_product(product_id):
     product = Product.query.get_or_404(product_id)
 
     if request.method == 'POST':
-        product.name        = request.form['name']
-        product.description = request.form['description']
-        product.price       = float(request.form['price'])
-        product.stock       = int(request.form['stock'])
+        product.name              = request.form['name']
+        product.description       = request.form['description']
+        product.short_description = request.form.get('short_description', '')
+        product.price             = float(request.form['price'])
+        product.stock             = int(request.form['stock'])
+        compare_price             = request.form.get('compare_price')
+        product.compare_price     = float(compare_price) if compare_price else None
+        product.sku               = request.form.get('sku', '').strip() or None
+        product.brand             = request.form.get('brand', '').strip()
+        product.category          = request.form.get('category', '').strip()
 
-        # Only update image if a new one was uploaded or URL was changed
         file = request.files.get('image_file')
         if file and allowed_file(file.filename):
             filename          = secure_filename(file.filename)
@@ -1093,21 +1132,42 @@ with app.app_context():
             app.logger.info('Migration: added verify_token column')
         except Exception:
             pass
+        # user columns
+        for col in [
+            'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS phone VARCHAR(20)',
+            'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS first_name VARCHAR(100)',
+            'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS last_name VARCHAR(100)',
+            'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT \'customer\'',
+            'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE',
+        ]:
+            try: conn.execute(db.text(col)); conn.commit()
+            except Exception: pass
+
+        # product columns
+        for col in [
+            'ALTER TABLE product ADD COLUMN IF NOT EXISTS short_description VARCHAR(500)',
+            'ALTER TABLE product ADD COLUMN IF NOT EXISTS compare_price FLOAT',
+            'ALTER TABLE product ADD COLUMN IF NOT EXISTS sku VARCHAR(100)',
+            'ALTER TABLE product ADD COLUMN IF NOT EXISTS brand VARCHAR(100)',
+            'ALTER TABLE product ADD COLUMN IF NOT EXISTS category VARCHAR(100)',
+            'ALTER TABLE product ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE',
+        ]:
+            try: conn.execute(db.text(col)); conn.commit()
+            except Exception: pass
+
+        # order columns
+        for col in [
+            'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS payment_status VARCHAR(50) DEFAULT \'Paid\'',
+            'ALTER TABLE "order" ADD COLUMN IF NOT EXISTS fulfillment_status VARCHAR(50) DEFAULT \'Unfulfilled\'',
+        ]:
+            try: conn.execute(db.text(col)); conn.commit()
+            except Exception: pass
+
+        # order_item snapshot column
         try:
-            conn.execute(db.text('ALTER TABLE "user" ADD COLUMN IF NOT EXISTS phone VARCHAR(20)'))
+            conn.execute(db.text('ALTER TABLE order_item ADD COLUMN IF NOT EXISTS product_name VARCHAR(200)'))
             conn.commit()
-        except Exception:
-            pass
-        try:
-            conn.execute(db.text('ALTER TABLE "order" ADD COLUMN IF NOT EXISTS payment_status VARCHAR(50) DEFAULT \'Paid\''))
-            conn.commit()
-        except Exception:
-            pass
-        try:
-            conn.execute(db.text('ALTER TABLE "order" ADD COLUMN IF NOT EXISTS fulfillment_status VARCHAR(50) DEFAULT \'Unfulfilled\''))
-            conn.commit()
-        except Exception:
-            pass
+        except Exception: pass
 
     # Mark all existing users (who have no verify_token) as verified
     # so they aren't locked out after the verification feature was added
