@@ -1024,17 +1024,17 @@ with app.app_context():
         except Exception:
             pass
         try:
-            conn.execute(db.text('ALTER TABLE "user" ADD COLUMN phone VARCHAR(20)'))
+            conn.execute(db.text('ALTER TABLE "user" ADD COLUMN IF NOT EXISTS phone VARCHAR(20)'))
             conn.commit()
         except Exception:
             pass
         try:
-            conn.execute(db.text('ALTER TABLE "order" ADD COLUMN payment_status VARCHAR(50) DEFAULT \'Paid\''))
+            conn.execute(db.text('ALTER TABLE "order" ADD COLUMN IF NOT EXISTS payment_status VARCHAR(50) DEFAULT \'Paid\''))
             conn.commit()
         except Exception:
             pass
         try:
-            conn.execute(db.text('ALTER TABLE "order" ADD COLUMN fulfillment_status VARCHAR(50) DEFAULT \'Unfulfilled\''))
+            conn.execute(db.text('ALTER TABLE "order" ADD COLUMN IF NOT EXISTS fulfillment_status VARCHAR(50) DEFAULT \'Unfulfilled\''))
             conn.commit()
         except Exception:
             pass
