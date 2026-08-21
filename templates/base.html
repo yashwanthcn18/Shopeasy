@@ -7,7 +7,7 @@
   <title>{% block title %}ShopEasy{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
 
   <!-- ── Navbar (always visible) ── -->
   <nav>

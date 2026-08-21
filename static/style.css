@@ -264,15 +264,17 @@ nav {
 
 
 /* ── Auth forms (login / signup) ───────────────────────────────────────────── */
-/* Dark background on auth pages — wraps the white card */
-.auth-page-bg {
+/* Dark background on auth pages */
+body.auth-page {
   background: #0f0f0f;
+}
+
+.auth-page-bg {
   min-height: calc(100vh - 64px);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 40px 16px;
-  margin: -48px -24px;   /* cancel container margin so it fills edge-to-edge */
 }
 
 .auth-box {
