@@ -13,6 +13,8 @@ app.permanent_session_lifetime = 60 * 60 * 24 * 30   # session lasts 30 days —
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///shop.db')   # uses Supabase on Render, SQLite locally
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = os.path.join('static', 'images')   # where uploaded images are saved
+# Force https in url_for when behind Render's proxy
+app.config['PREFERRED_URL_SCHEME'] = 'https'
 ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'webp'}
 
 db.init_app(app)
@@ -258,7 +260,11 @@ def resend_verification():
 # ── Google OAuth ─────────────────────────────────────────────────────────────
 @app.route('/auth/google')
 def google_login():
-    redirect_uri = url_for('google_callback', _external=True)
+    # Use env var so it works on both Render and locally
+    redirect_uri = os.environ.get(
+        'GOOGLE_REDIRECT_URI',
+        url_for('google_callback', _external=True, _scheme='https')
+    )
     return google.authorize_redirect(redirect_uri)
 
 @app.route('/auth/google/callback')
