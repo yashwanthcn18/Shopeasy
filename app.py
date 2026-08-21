@@ -4,8 +4,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from models import db, User, Product, CartItem, Order, OrderItem, NewsletterSubscriber
-import os, re, random, time, requests, smtplib, secrets
-from email.mime.text import MIMEText
+import os, re, random, time, requests, secrets
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'change-this-secret-key')  # reads from environment on Render
@@ -18,23 +17,38 @@ ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'webp'}
 db.init_app(app)
 
 
-# ── Email helper — Gmail SMTP SSL port 465 ────────────────────────────────────
+# ── Email helper — Mailjet HTTP API (works on Render free tier) ───────────────
+# Render blocks SMTP ports, so we use Mailjet's HTTP API instead
+# Set MAILJET_API_KEY and MAILJET_SECRET_KEY in Render environment variables
 def send_email(to_email, subject, body):
-    username = os.environ.get('MAIL_USERNAME', '')
-    password = os.environ.get('MAIL_PASSWORD', '')
-    if not username or not password:
+    api_key    = os.environ.get('MAILJET_API_KEY', '')
+    secret_key = os.environ.get('MAILJET_SECRET_KEY', '')
+    sender     = os.environ.get('MAIL_USERNAME', '')
+
+    if not api_key or not secret_key:
+        app.logger.warning('Mailjet credentials not set in environment')
         return False
+
     try:
-        msg = MIMEText(body)
-        msg['Subject'] = subject
-        msg['From']    = f'ShopEasy <{username}>'
-        msg['To']      = to_email
-        with smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=15) as server:
-            server.login(username, password)
-            server.sendmail(username, to_email, msg.as_string())
-        return True
+        resp = requests.post(
+            'https://api.mailjet.com/v3.1/send',
+            auth=(api_key, secret_key),          # Mailjet uses HTTP Basic auth
+            json={
+                'Messages': [{
+                    'From':     {'Email': sender, 'Name': 'ShopEasy'},
+                    'To':       [{'Email': to_email}],
+                    'Subject':  subject,
+                    'TextPart': body,
+                }]
+            },
+            timeout=10
+        )
+        if resp.status_code == 200:
+            return True
+        app.logger.error(f'Mailjet error: {resp.text}')
+        return False
     except Exception as e:
-        app.logger.error(f'Email failed: {e}')
+        app.logger.error(f'Email send failed: {e}')
         return False
 
 
