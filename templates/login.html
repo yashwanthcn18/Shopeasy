@@ -1,230 +1,79 @@
-<!-- login.html — Fullscreen dark auth page matching admin style -->
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Login — ShopEasy</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: 'Inter', sans-serif;
-      background: #0f0f0f;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 24px 16px;
-    }
+<!-- login.html — Simple email + password login form -->
+{% extends 'base.html' %}
+{% block title %}Login{% endblock %}
 
-    /* ShopEasy brand at top */
-    .auth-brand {
-      font-family: 'Playfair Display', serif;
-      font-size: 1.8rem;
-      color: #fff;
-      margin-bottom: 28px;
-      letter-spacing: 0.02em;
-    }
-    .auth-brand span { color: #c9a84c; }
+{% block content %}
+<div class="auth-page-bg">
+<div class="auth-box">
+  <h2>Welcome back</h2>
 
-    /* White card */
-    .auth-box {
-      background: #fff;
-      width: 100%;
-      max-width: 400px;
-      padding: 36px 32px;
-    }
+  <form method="POST" action="{{ url_for('login') }}" autocomplete="off">
 
-    .auth-box h2 {
-      font-family: 'Playfair Display', serif;
-      font-size: 1.4rem;
-      margin-bottom: 24px;
-      color: #111;
-    }
+    <label>Email</label>
+    <input type="email" name="email" placeholder="you@example.com" autocomplete="new-password" required />
 
-    label {
-      display: block;
-      font-size: 0.75rem;
-      font-weight: 500;
-      letter-spacing: 0.07em;
-      text-transform: uppercase;
-      color: #888;
-      margin-bottom: 6px;
-    }
+    <label>Password</label>
+    <div style="position:relative; margin-bottom:16px;">
+      <input type="password" name="password" id="loginPassword" placeholder="••••••••" autocomplete="new-password" required
+             style="width:100%; padding:10px 40px 10px 12px;" />
+      <button type="button" onclick="togglePw()"
+              style="position:absolute; right:10px; top:50%; transform:translateY(-50%);
+                     background:none; border:none; cursor:pointer; font-size:1rem; color:#999;">👁</button>
+    </div>
 
-    input[type="email"],
-    input[type="text"],
-    input[type="password"] {
-      width: 100%;
-      padding: 11px 14px;
-      border: 1px solid #ddd;
-      font-size: 0.92rem;
-      font-family: 'Inter', sans-serif;
-      outline: none;
-      margin-bottom: 18px;
-      transition: border-color 0.15s;
-    }
-    input:focus { border-color: #111; }
+    <button class="btn btn-dark" type="submit">Log In</button>
 
-    .pw-wrap { position: relative; margin-bottom: 18px; }
-    .pw-wrap input { margin-bottom: 0; padding-right: 42px; }
-    .pw-toggle {
-      position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
-      background: none; border: none; cursor: pointer; color: #aaa; font-size: 1rem;
-    }
+  </form>
 
-    .btn-submit {
-      width: 100%; padding: 13px;
-      background: #111; color: #fff;
-      border: none; cursor: pointer;
-      font-family: 'Inter', sans-serif;
-      font-size: 0.82rem; font-weight: 600;
-      letter-spacing: 0.08em; text-transform: uppercase;
-      transition: background 0.15s;
-    }
-    .btn-submit:hover { background: #333; }
+  <p class="hint"><a href="{{ url_for('forgot_password') }}">Forgot password?</a></p>
+  <p class="hint">Don't have an account? <a href="{{ url_for('signup') }}">Sign up</a></p>
 
-    .hint {
-      text-align: center;
-      font-size: 0.82rem;
-      color: #888;
-      margin-top: 14px;
-    }
-    .hint a { color: #111; font-weight: 600; text-decoration: underline; }
-
-    /* Divider */
-    .divider {
-      display: flex; align-items: center; gap: 12px;
-      margin: 20px 0;
-    }
-    .divider div { flex: 1; height: 1px; background: #eee; }
-    .divider span { font-size: 0.72rem; color: #bbb; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; }
-
-    /* Social buttons */
-    .social-btn {
-      display: flex; align-items: center; justify-content: center;
-      width: 100%; padding: 11px 16px; margin-bottom: 10px;
-      font-size: 0.86rem; font-weight: 500;
-      border: 1px solid #ddd; cursor: pointer;
-      text-decoration: none; font-family: 'Inter', sans-serif;
-      transition: background 0.15s;
-    }
-    .google-btn { background: #fff; color: #333; }
-    .google-btn:hover { background: #f5f5f5; }
-    .facebook-btn { background: #1877F2; color: #fff; border-color: #1877F2; }
-    .facebook-btn:hover { background: #166fe5; }
-
-    /* Guest */
-    .guest-section {
-      margin-top: 16px; border-top: 1px solid #eee;
-      padding-top: 16px; text-align: center;
-    }
-    .btn-guest {
-      display: block; width: 100%; padding: 11px;
-      border: 1px solid #111; background: transparent;
-      color: #111; font-family: 'Inter', sans-serif;
-      font-size: 0.82rem; font-weight: 600;
-      letter-spacing: 0.06em; text-transform: uppercase;
-      text-decoration: none; text-align: center;
-      transition: background 0.15s, color 0.15s;
-    }
-    .btn-guest:hover { background: #111; color: #fff; }
-
-    /* Flash */
-    .flash {
-      background: #fef9c3; border-left: 3px solid #c9a84c;
-      padding: 10px 14px; margin-bottom: 18px;
-      font-size: 0.85rem; color: #78580a;
-    }
-
-    /* Resend verification */
-    details summary {
-      font-size: 0.78rem; color: #bbb; cursor: pointer; text-align: center; margin-top: 12px;
-    }
-    details input {
-      width: 100%; padding: 9px 12px; border: 1px solid #ddd;
-      font-size: 0.88rem; margin: 10px 0 8px; font-family: 'Inter', sans-serif; outline: none;
-    }
-    details button {
-      width: 100%; padding: 9px; border: 1px solid #111;
-      background: transparent; color: #111; font-family: 'Inter', sans-serif;
-      font-size: 0.82rem; font-weight: 600; cursor: pointer;
-      letter-spacing: 0.06em; text-transform: uppercase;
-    }
-
-    @media (max-width: 480px) {
-      .auth-box { padding: 28px 20px; }
-      .auth-brand { font-size: 1.5rem; margin-bottom: 20px; }
-    }
-  </style>
-</head>
-<body>
-
-  <!-- Brand -->
-  <div class="auth-brand">Shop<span>Easy</span></div>
-
-  <div class="auth-box">
-    <h2>Welcome back</h2>
-
-    {% with messages = get_flashed_messages() %}
-      {% if messages %}{% for msg in messages %}<div class="flash">{{ msg }}</div>{% endfor %}{% endif %}
-    {% endwith %}
-
-    <form method="POST" action="{{ url_for('login') }}" autocomplete="off">
-      <label>Email</label>
-      <input type="email" name="email" placeholder="you@example.com" autocomplete="new-password" required />
-
-      <label>Password</label>
-      <div class="pw-wrap">
-        <input type="password" name="password" id="loginPassword" placeholder="••••••••" autocomplete="new-password" required />
-        <button type="button" class="pw-toggle" onclick="togglePw()">👁</button>
-      </div>
-
-      <button class="btn-submit" type="submit">Log In</button>
+  <!-- Resend verification — shown when user hasn't verified yet -->
+  <details style="margin-top:14px; text-align:center;">
+    <summary style="font-size:0.8rem; color:#aaa; cursor:pointer;">Didn't receive verification email?</summary>
+    <form method="POST" action="{{ url_for('resend_verification') }}" style="margin-top:10px;">
+      <input type="email" name="email" placeholder="Enter your email" required
+             style="width:100%; padding:9px 12px; border:1px solid #ddd; font-size:0.88rem; margin-bottom:8px; font-family:inherit;" />
+      <button type="submit" class="btn btn-outline" style="width:100%; padding:9px;">Resend Verification Link</button>
     </form>
+  </details>
 
-    <p class="hint"><a href="{{ url_for('forgot_password') }}">Forgot password?</a></p>
-    <p class="hint">Don't have an account? <a href="{{ url_for('signup') }}">Sign up</a></p>
-
-    <details>
-      <summary>Didn't receive verification email?</summary>
-      <form method="POST" action="{{ url_for('resend_verification') }}">
-        <input type="email" name="email" placeholder="Enter your email" required />
-        <button type="submit">Resend Verification Link</button>
-      </form>
-    </details>
-
-    <!-- Social login -->
-    <div class="divider">
-      <div></div><span>or continue with</span><div></div>
-    </div>
-
-    <a href="{{ url_for('google_login') }}" class="social-btn google-btn">
-      <svg width="18" height="18" viewBox="0 0 48 48" style="margin-right:10px;flex-shrink:0;">
-        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-      </svg>
-      Continue with Google
-    </a>
-
-    <a href="{{ url_for('facebook_login') }}" class="social-btn facebook-btn">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff" style="margin-right:10px;flex-shrink:0;">
-        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-      </svg>
-      Continue with Facebook
-    </a>
-
-    <div class="guest-section">
-      <p style="font-size:0.82rem;color:#999;margin-bottom:10px;">Just browsing?</p>
-      <a href="{{ url_for('guest_login') }}" class="btn-guest">Continue as Guest</a>
-      <p style="font-size:0.74rem;color:#bbb;margin-top:8px;">You can log in later to place orders</p>
-    </div>
+  <!-- Social login divider -->
+  <div style="display:flex;align-items:center;gap:12px;margin:20px 0;">
+    <div style="flex:1;height:1px;background:#eee;"></div>
+    <span style="font-size:0.75rem;color:#bbb;letter-spacing:0.06em;text-transform:uppercase;">or continue with</span>
+    <div style="flex:1;height:1px;background:#eee;"></div>
   </div>
+
+  <!-- Google login -->
+  <a href="{{ url_for('google_login') }}" class="social-btn google-btn">
+    <svg width="18" height="18" viewBox="0 0 48 48" style="margin-right:10px;flex-shrink:0;">
+      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+    </svg>
+    Continue with Google
+  </a>
+
+  <!-- Facebook login -->
+  <a href="{{ url_for('facebook_login') }}" class="social-btn facebook-btn">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff" style="margin-right:10px;flex-shrink:0;">
+      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+    </svg>
+    Continue with Facebook
+  </a>
+
+  <!-- Guest option -->
+  <div style="margin-top:16px; border-top:1px solid #eee; padding-top:16px; text-align:center;">
+    <p style="font-size:0.82rem; color:#999; margin-bottom:10px;">Just browsing?</p>
+    <a href="{{ url_for('guest_login') }}" class="btn btn-outline" style="width:100%; display:block; text-align:center;">
+      Continue as Guest
+    </a>
+    <p style="font-size:0.75rem; color:#bbb; margin-top:8px;">You can log in later to place orders</p>
+  </div>
+</div>
+</div>
 
 <script>
   function togglePw() {
@@ -232,5 +81,4 @@
     input.type = input.type === 'password' ? 'text' : 'password';
   }
 </script>
-</body>
-</html>
+{% endblock %}
