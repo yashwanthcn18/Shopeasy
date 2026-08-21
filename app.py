@@ -180,7 +180,7 @@ def signup():
         )
 
         if sent:
-            flash('Account created! Check your email and click the verification link to login.')
+            flash('Account created! Check your inbox (and spam/junk folder) for the verification link.')
         else:
             flash('Account created but we could not send a verification email. Contact support.')
         return redirect(url_for('login'))
