@@ -772,8 +772,26 @@ def admin_users():
 # ═════════════════════════════════════════════════════════════════════════════
 
 # ── Create tables on startup — works on both Render and locally ───────────────
+# Also runs a safe migration to add any missing columns to existing tables
 with app.app_context():
     db.create_all()
+
+    # Migration: add is_verified and verify_token columns if they don't exist yet
+    # (db.create_all won't add new columns to existing tables)
+    with db.engine.connect() as conn:
+        try:
+            conn.execute(db.text('ALTER TABLE "user" ADD COLUMN is_verified BOOLEAN DEFAULT FALSE'))
+            conn.commit()
+            app.logger.info('Migration: added is_verified column')
+        except Exception:
+            pass  # column already exists — safe to ignore
+        try:
+            conn.execute(db.text('ALTER TABLE "user" ADD COLUMN verify_token VARCHAR(100)'))
+            conn.commit()
+            app.logger.info('Migration: added verify_token column')
+        except Exception:
+            pass  # column already exists — safe to ignore
+
     seed_products()
 
 if __name__ == '__main__':
