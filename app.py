@@ -4,7 +4,8 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from models import db, User, Product, CartItem, Order, OrderItem, NewsletterSubscriber, Address
-import os, re, random, time, requests, secrets
+import os, re, random, time, requests, secrets, hmac, hashlib
+import razorpay
 from authlib.integrations.flask_client import OAuth
 
 app = Flask(__name__)
@@ -18,6 +19,13 @@ app.config['PREFERRED_URL_SCHEME'] = 'https'
 ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'webp'}
 
 db.init_app(app)
+
+# ── Razorpay client ───────────────────────────────────────────────────────────
+def get_razorpay_client():
+    return razorpay.Client(auth=(
+        os.environ.get('RAZORPAY_KEY_ID', ''),
+        os.environ.get('RAZORPAY_KEY_SECRET', '')
+    ))
 
 # ── OAuth (Google + Facebook social login) ────────────────────────────────────
 oauth = OAuth(app)
@@ -738,7 +746,7 @@ def cart():
 #  CHECKOUT
 # ═════════════════════════════════════════════════════════════════════════════
 
-@app.route('/checkout', methods=['GET', 'POST'])
+@app.route('/checkout', methods=['GET'])
 def checkout():
     if not current_user():
         return redirect(url_for('login'))
@@ -748,38 +756,100 @@ def checkout():
 
     user_id = session['user_id']
     items   = CartItem.query.filter_by(user_id=user_id).all()
-
     if not items:
         flash('Your cart is empty.')
         return redirect(url_for('cart'))
 
+    user      = current_user()
+    total     = sum(i.product.price * i.quantity for i in items)
+    addresses = Address.query.filter_by(user_id=user_id).order_by(Address.is_default.desc()).all()
+    razorpay_key = os.environ.get('RAZORPAY_KEY_ID', '')
+    return render_template('checkout.html', items=items, total=total,
+                           user=user, addresses=addresses, razorpay_key=razorpay_key)
+
+
+@app.route('/checkout/create-order', methods=['POST'])
+def create_razorpay_order():
+    if not current_user():
+        return jsonify(error='Not logged in'), 401
+
+    user_id = session['user_id']
+    items   = CartItem.query.filter_by(user_id=user_id).all()
+    if not items:
+        return jsonify(error='Cart is empty'), 400
+
+    total = sum(i.product.price * i.quantity for i in items)
+    amount_paise = int(total * 100)  # Razorpay uses paise (1 INR = 100 paise)
+
+    try:
+        client = get_razorpay_client()
+        rz_order = client.order.create({
+            'amount':   amount_paise,
+            'currency': 'INR',
+            'receipt':  f'order_user_{user_id}',
+            'payment_capture': 1,
+        })
+        session['pending_address'] = request.json.get('address', '')
+        return jsonify(
+            razorpay_order_id = rz_order['id'],
+            amount            = amount_paise,
+            currency          = 'INR',
+        )
+    except Exception as e:
+        app.logger.error(f'Razorpay order creation failed: {e}')
+        return jsonify(error='Payment gateway error. Please try again.'), 500
+
+
+@app.route('/checkout/verify-payment', methods=['POST'])
+def verify_payment():
+    if not current_user():
+        return jsonify(error='Not logged in'), 401
+
+    data               = request.json
+    rz_order_id        = data.get('razorpay_order_id', '')
+    rz_payment_id      = data.get('razorpay_payment_id', '')
+    rz_signature       = data.get('razorpay_signature', '')
+    address            = data.get('address', session.get('pending_address', ''))
+
+    # Verify HMAC-SHA256 signature
+    key_secret = os.environ.get('RAZORPAY_KEY_SECRET', '').encode()
+    msg        = f'{rz_order_id}|{rz_payment_id}'.encode()
+    expected   = hmac.new(key_secret, msg, hashlib.sha256).hexdigest()
+
+    if not hmac.compare_digest(expected, rz_signature):
+        return jsonify(error='Payment verification failed.'), 400
+
+    user_id = session['user_id']
+    items   = CartItem.query.filter_by(user_id=user_id).all()
+    if not items:
+        return jsonify(error='Cart is empty'), 400
+
     total = sum(i.product.price * i.quantity for i in items)
 
-    if request.method == 'POST':
-        address = request.form['address']
+    order = Order(
+        user_id            = user_id,
+        total              = total,
+        address            = address,
+        payment_status     = 'Paid',
+        fulfillment_status = 'Unfulfilled',
+        status             = 'Confirmed',
+    )
+    db.session.add(order)
+    db.session.flush()
 
-        # Create the order
-        order = Order(user_id=user_id, total=total, address=address)
-        db.session.add(order)
-        db.session.flush()   # get order.id before committing
+    for i in items:
+        db.session.add(OrderItem(
+            order_id   = order.id,
+            product_id = i.product_id,
+            quantity   = i.quantity,
+            price      = i.product.price,
+        ))
 
-        # Copy each cart item into order items (snapshot of prices)
-        for i in items:
-            db.session.add(OrderItem(
-                order_id   = order.id,
-                product_id = i.product_id,
-                quantity   = i.quantity,
-                price      = i.product.price
-            ))
+    CartItem.query.filter_by(user_id=user_id).delete()
+    session.pop('pending_address', None)
+    db.session.commit()
 
-        # Clear the cart
-        CartItem.query.filter_by(user_id=user_id).delete()
-        db.session.commit()
-
-        flash('Order placed successfully!')
-        return redirect(url_for('orders'))
-
-    return render_template('checkout.html', items=items, total=total, user=current_user())
+    return jsonify(success=True, order_id=order.id)
 
 
 # ═════════════════════════════════════════════════════════════════════════════

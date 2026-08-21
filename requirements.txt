@@ -4,3 +4,4 @@ werkzeug
 psycopg2-binary
 requests
 authlib
+razorpay

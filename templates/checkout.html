@@ -1,4 +1,3 @@
-<!-- checkout.html — Shipping address form + order summary side panel -->
 {% extends 'base.html' %}
 {% block title %}Checkout{% endblock %}
 
@@ -7,42 +6,242 @@
 
 <div class="checkout-layout">
 
-  <!-- Left: shipping details form -->
+  <!-- Left: shipping details -->
   <div class="checkout-form-box">
     <h3>Shipping Details</h3>
 
-    <form method="POST" action="{{ url_for('checkout') }}">
+    {% if addresses %}
+    <p style="font-size:0.82rem; color:#888; margin-bottom:12px;">Select a saved address or enter a new one:</p>
+    {% for addr in addresses %}
+    <label class="saved-addr-option">
+      <input type="radio" name="saved_addr" value="{{ addr.id }}"
+             {{ 'checked' if addr.is_default }} onchange="fillAddress(this)"
+             data-line1="{{ addr.line1 }}"
+             data-line2="{{ addr.line2 or '' }}"
+             data-city="{{ addr.city }}"
+             data-state="{{ addr.state }}"
+             data-pincode="{{ addr.pincode }}"
+             data-name="{{ addr.name }}"
+             data-phone="{{ addr.phone or '' }}" />
+      <span>
+        <strong>{{ addr.name }}</strong>{% if addr.is_default %} <span class="default-badge" style="font-size:0.68rem; background:#111; color:#fff; padding:1px 7px; border-radius:10px; margin-left:6px;">Default</span>{% endif %}<br>
+        <span style="font-size:0.82rem; color:#666;">{{ addr.line1 }}, {{ addr.city }}, {{ addr.state }} {{ addr.pincode }}</span>
+      </span>
+    </label>
+    {% endfor %}
+    <label class="saved-addr-option">
+      <input type="radio" name="saved_addr" value="new" onchange="clearAddress()" />
+      <span>Enter a new address</span>
+    </label>
+    <hr style="margin:18px 0; border:none; border-top:1px solid #eee;" />
+    {% endif %}
 
+    <div id="addrForm">
       <label>Full Name</label>
-      <input type="text" name="name" placeholder="John Doe" required />
+      <input type="text" id="shipName" placeholder="John Doe" required />
 
       <label>Phone Number</label>
-      <input type="tel" name="phone" placeholder="9876543210" required />
+      <input type="tel" id="shipPhone" placeholder="9876543210" required />
 
-      <label>Delivery Address</label>
-      <textarea name="address" placeholder="House no, Street, City, State, PIN" required></textarea>
+      <label>Address Line 1</label>
+      <input type="text" id="shipLine1" placeholder="House no, Street" required />
 
-      <button class="btn btn-dark" type="submit">Place Order</button>
+      <label>Address Line 2 <span style="color:#999; font-weight:400;">(optional)</span></label>
+      <input type="text" id="shipLine2" placeholder="Landmark, Area" />
 
-    </form>
+      <label>City</label>
+      <input type="text" id="shipCity" required />
+
+      <label>State</label>
+      <input type="text" id="shipState" required />
+
+      <label>PIN Code</label>
+      <input type="text" id="shipPin" required />
+    </div>
+
+    <div id="payError" style="display:none; color:#c62828; font-size:0.85rem; margin:12px 0; padding:10px 14px; background:#ffeaea; border-radius:6px;"></div>
+
+    <button class="btn btn-dark" id="payBtn" onclick="startPayment()" style="width:100%; margin-top:20px; padding:14px;">
+      Pay ₹{{ total }} →
+    </button>
+
+    <p style="font-size:0.75rem; color:#aaa; text-align:center; margin-top:10px;">
+      🔒 Secured by Razorpay — UPI, Cards, Net Banking, Wallets
+    </p>
   </div>
 
-  <!-- Right: summary of what's being ordered -->
+  <!-- Right: order summary -->
   <div class="order-summary-box">
     <h3>Order Summary</h3>
 
     {% for item in items %}
     <div class="summary-row">
       <span>{{ item.product.name }} × {{ item.quantity }}</span>
-      <span>₹{{ item.product.price * item.quantity }}</span>
+      <span>₹{{ (item.product.price * item.quantity) | int }}</span>
     </div>
     {% endfor %}
 
+    <div class="summary-divider"></div>
+    <div class="summary-row">
+      <span>Subtotal</span>
+      <span>₹{{ total | int }}</span>
+    </div>
+    <div class="summary-row">
+      <span>Shipping</span>
+      <span style="color:#2e7d32;">Free</span>
+    </div>
     <div class="summary-total">
       <span>Total</span>
-      <span>₹{{ total }}</span>
+      <span>₹{{ total | int }}</span>
     </div>
   </div>
 
 </div>
+
+<!-- Razorpay JS SDK -->
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+<script>
+  var RAZORPAY_KEY = "{{ razorpay_key }}";
+
+  function getAddress() {
+    return [
+      document.getElementById('shipName').value,
+      document.getElementById('shipLine1').value,
+      document.getElementById('shipLine2').value,
+      document.getElementById('shipCity').value,
+      document.getElementById('shipState').value,
+      document.getElementById('shipPin').value
+    ].filter(Boolean).join(', ');
+  }
+
+  function validate() {
+    var required = ['shipName','shipPhone','shipLine1','shipCity','shipState','shipPin'];
+    for (var i = 0; i < required.length; i++) {
+      if (!document.getElementById(required[i]).value.trim()) {
+        showError('Please fill in all required shipping fields.');
+        return false;
+      }
+    }
+    return true;
+  }
+
+  function showError(msg) {
+    var el = document.getElementById('payError');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+
+  function hideError() {
+    document.getElementById('payError').style.display = 'none';
+  }
+
+  function fillAddress(radio) {
+    document.getElementById('shipName').value  = radio.dataset.name;
+    document.getElementById('shipPhone').value = radio.dataset.phone;
+    document.getElementById('shipLine1').value = radio.dataset.line1;
+    document.getElementById('shipLine2').value = radio.dataset.line2;
+    document.getElementById('shipCity').value  = radio.dataset.city;
+    document.getElementById('shipState').value = radio.dataset.state;
+    document.getElementById('shipPin').value   = radio.dataset.pincode;
+  }
+
+  function clearAddress() {
+    ['shipName','shipPhone','shipLine1','shipLine2','shipCity','shipState','shipPin']
+      .forEach(function(id) { document.getElementById(id).value = ''; });
+  }
+
+  function startPayment() {
+    hideError();
+    if (!validate()) return;
+
+    var btn = document.getElementById('payBtn');
+    btn.disabled = true;
+    btn.textContent = 'Creating order…';
+
+    fetch('/checkout/create-order', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({address: getAddress()})
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.error) { showError(data.error); btn.disabled = false; btn.textContent = 'Pay ₹{{ total | int }} →'; return; }
+
+      var options = {
+        key:         RAZORPAY_KEY,
+        amount:      data.amount,
+        currency:    data.currency,
+        order_id:    data.razorpay_order_id,
+        name:        'KAPIQ',
+        description: 'Medal Holder Products',
+        prefill: {
+          name:    document.getElementById('shipName').value,
+          contact: document.getElementById('shipPhone').value,
+        },
+        theme: { color: '#0f0f0f' },
+        handler: function(response) {
+          btn.textContent = 'Verifying payment…';
+          fetch('/checkout/verify-payment', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+              razorpay_order_id:   response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature:  response.razorpay_signature,
+              address:             getAddress(),
+            })
+          })
+          .then(function(r) { return r.json(); })
+          .then(function(d) {
+            if (d.success) {
+              window.location.href = '/account#orders';
+            } else {
+              showError(d.error || 'Payment verification failed. Contact support.');
+              btn.disabled = false;
+              btn.textContent = 'Pay ₹{{ total | int }} →';
+            }
+          });
+        },
+        modal: {
+          ondismiss: function() {
+            btn.disabled = false;
+            btn.textContent = 'Pay ₹{{ total | int }} →';
+          }
+        }
+      };
+
+      var rzp = new Razorpay(options);
+      rzp.on('payment.failed', function(response) {
+        showError('Payment failed: ' + (response.error.description || 'Please try again.'));
+        btn.disabled = false;
+        btn.textContent = 'Pay ₹{{ total | int }} →';
+      });
+      rzp.open();
+    })
+    .catch(function() {
+      showError('Something went wrong. Please try again.');
+      btn.disabled = false;
+      btn.textContent = 'Pay ₹{{ total | int }} →';
+    });
+  }
+
+  // Auto-fill default address on page load
+  window.addEventListener('DOMContentLoaded', function() {
+    var defaultRadio = document.querySelector('input[name="saved_addr"]:checked');
+    if (defaultRadio && defaultRadio.value !== 'new') fillAddress(defaultRadio);
+  });
+</script>
+
+<style>
+.saved-addr-option {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 12px; border: 1px solid #eee; border-radius: 8px;
+  margin-bottom: 8px; cursor: pointer; transition: border-color .2s;
+}
+.saved-addr-option:has(input:checked) { border-color: #111; background: #fafafa; }
+.saved-addr-option input { margin-top: 3px; flex-shrink: 0; }
+.summary-divider { border-top: 1px solid #eee; margin: 12px 0; }
+</style>
+
 {% endblock %}
