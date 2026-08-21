@@ -119,13 +119,6 @@
     </div>
   </div>
 
-  <!-- ── Email verification banner ── -->
-  {% if user and user.id and not user.is_guest and not user.is_verified %}
-  <div style="background:#fff3cd;border-bottom:1px solid #ffc107;padding:10px 20px;text-align:center;font-size:0.85rem;">
-    ⚠️ Please verify your email to unlock all features.
-    Check your inbox for the verification link.
-  </div>
-  {% endif %}
 
   <div class="container">
     {% with messages = get_flashed_messages() %}
