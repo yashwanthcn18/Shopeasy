@@ -11,67 +11,94 @@
 
   <!-- ── Navbar (always visible) ── -->
   <nav>
-    <a class="nav-logo" href="{{ url_for('home') }}">The Medal <span>Holder</span></a>
-
-    <!-- Search bar — desktop only -->
-    <form class="nav-search" action="{{ url_for('home') }}" method="GET">
-      <input type="text" name="q" placeholder="Search products…"
-             value="{{ request.args.get('q', '') }}" autocomplete="off" />
-      <button type="submit">🔍</button>
-    </form>
-
-    <!-- Desktop nav links -->
-    <div class="nav-links">
-      <a href="{{ url_for('home') }}">Home</a>
+    <!-- Left: text nav links (desktop) -->
+    <div class="nav-links nav-links-left">
+      <a href="{{ url_for('home') }}">Shop</a>
       {% if user %}
-      <a href="#" id="cartToggle" style="position:relative;">
-        🛒 Cart
-        {% if cart_count and cart_count > 0 %}
-        <span style="position:absolute;top:-8px;right:-10px;background:#e53935;color:#fff;
-                     border-radius:50%;font-size:0.65rem;font-weight:700;
-                     width:18px;height:18px;display:flex;align-items:center;justify-content:center;">
-          {{ cart_count }}
-        </span>
-        {% endif %}
-      </a>
-      <a href="{{ url_for('orders') }}">My Orders</a>
-      <a href="{{ url_for('profile') }}">Profile</a>
-      <a href="{{ url_for('logout') }}" class="logout-link">Logout</a>
-      {% else %}
-      <a href="{{ url_for('login') }}">Login</a>
-      <a href="{{ url_for('signup') }}" class="btn btn-dark" style="padding:6px 18px; font-size:0.88rem;">Sign Up</a>
+      <a href="{{ url_for('orders') }}">Orders</a>
       {% endif %}
     </div>
 
-    <!-- Mobile right side: cart + hamburger -->
-    <div class="mobile-nav-right">
+    <!-- Centre: brand logo -->
+    <a class="nav-logo" href="{{ url_for('home') }}">Shop<span>Easy</span></a>
+
+    <!-- Right: icon group (search, profile/login, cart) -->
+    <div class="nav-icons">
+
+      <!-- Search icon — opens overlay search bar -->
+      <button class="nav-icon-btn" id="searchToggle" title="Search" onclick="toggleSearch()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+      </button>
+
+      <!-- Profile / Login icon -->
       {% if user %}
-      <a href="#" id="cartToggleMobile" style="position:relative;font-size:1.3rem;margin-right:4px;">
-        🛒
-        {% if cart_count and cart_count > 0 %}
-        <span style="position:absolute;top:-6px;right:-8px;background:#e53935;color:#fff;
-                     border-radius:50%;font-size:0.6rem;font-weight:700;
-                     width:16px;height:16px;display:flex;align-items:center;justify-content:center;">
-          {{ cart_count }}
-        </span>
-        {% endif %}
+      <a class="nav-icon-btn" href="{{ url_for('profile') }}" title="Profile">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+        </svg>
+      </a>
+      {% else %}
+      <a class="nav-icon-btn" href="{{ url_for('login') }}" title="Login">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+        </svg>
       </a>
       {% endif %}
-      <button class="hamburger-btn" onclick="toggleMobileMenu()">☰</button>
+
+      <!-- Cart icon with badge -->
+      {% if user %}
+      <a href="#" class="nav-icon-btn nav-cart-btn" id="cartToggle" title="Cart" style="position:relative;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/>
+        </svg>
+        {% if cart_count and cart_count > 0 %}
+        <span class="cart-badge">{{ cart_count }}</span>
+        {% endif %}
+      </a>
+      {% else %}
+      <a href="{{ url_for('login') }}" class="nav-icon-btn" title="Cart">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/>
+        </svg>
+      </a>
+      {% endif %}
+
+      <!-- Hamburger — mobile only -->
+      <button class="hamburger-btn" onclick="toggleMobileMenu()">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
     </div>
   </nav>
 
+  <!-- Search overlay — slides down when search icon clicked -->
+  <div id="searchOverlay" class="search-overlay">
+    <form action="{{ url_for('home') }}" method="GET" class="search-overlay-form">
+      <input type="text" name="q" placeholder="Search products…"
+             value="{{ request.args.get('q', '') }}" autocomplete="off" id="searchInput" />
+      <button type="submit">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+      </button>
+      <button type="button" class="search-close-btn" onclick="toggleSearch()">✕</button>
+    </form>
+  </div>
+
   <!-- Mobile dropdown menu -->
   <div id="mobileNavMenu" class="mobile-nav-menu">
-    <a href="{{ url_for('home') }}">🏠 Home</a>
+    <a href="{{ url_for('home') }}">Shop</a>
     {% if user %}
-    <a href="{{ url_for('cart') }}">🛒 Cart{% if cart_count and cart_count > 0 %} ({{ cart_count }}){% endif %}</a>
-    <a href="{{ url_for('orders') }}">📦 My Orders</a>
-    <a href="{{ url_for('profile') }}">👤 Profile</a>
-    <a href="{{ url_for('logout') }}" style="color:#e53935;">⬅ Logout</a>
+    <a href="{{ url_for('cart') }}">Cart{% if cart_count and cart_count > 0 %} ({{ cart_count }}){% endif %}</a>
+    <a href="{{ url_for('orders') }}">My Orders</a>
+    <a href="{{ url_for('profile') }}">Profile</a>
+    <a href="{{ url_for('logout') }}" class="mobile-logout">Logout</a>
     {% else %}
-    <a href="{{ url_for('login') }}">🔐 Login</a>
-    <a href="{{ url_for('signup') }}">📝 Sign Up</a>
+    <a href="{{ url_for('login') }}">Login</a>
+    <a href="{{ url_for('signup') }}">Sign Up</a>
     {% endif %}
   </div>
 
@@ -160,11 +187,18 @@
       }
     });
 
+    /* ── Search overlay ── */
+    function toggleSearch() {
+      var overlay = document.getElementById('searchOverlay');
+      overlay.classList.toggle('open');
+      if (overlay.classList.contains('open')) {
+        document.getElementById('searchInput').focus();
+      }
+    }
+
     /* ── Cart drawer ── */
     var cartToggle = document.getElementById('cartToggle');
-    var cartToggleMobile = document.getElementById('cartToggleMobile');
     if (cartToggle) cartToggle.addEventListener('click', function(e) { e.preventDefault(); openCart(); });
-    if (cartToggleMobile) cartToggleMobile.addEventListener('click', function(e) { e.preventDefault(); openCart(); });
 
     function openCart() {
       document.getElementById('cartDrawer').classList.add('open');
