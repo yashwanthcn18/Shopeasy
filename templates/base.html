@@ -15,7 +15,7 @@
     <div class="nav-links nav-links-left">
       <a href="{{ url_for('home') }}">Shop</a>
       {% if user %}
-      <a href="{{ url_for('orders') }}">Orders</a>
+      <a href="{{ url_for('profile') }}">My Account</a>
       <a href="{{ url_for('logout') }}" class="logout-link">Logout</a>
       {% endif %}
     </div>
@@ -35,7 +35,7 @@
 
       <!-- Profile / Login icon -->
       {% if user %}
-      <a class="nav-icon-btn" href="{{ url_for('profile') }}" title="Profile">
+      <a class="nav-icon-btn" href="{{ url_for('profile') }}" title="My Account">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
         </svg>
@@ -95,7 +95,7 @@
     {% if user %}
     <a href="{{ url_for('cart') }}">Cart{% if cart_count and cart_count > 0 %} ({{ cart_count }}){% endif %}</a>
     <a href="{{ url_for('orders') }}">My Orders</a>
-    <a href="{{ url_for('profile') }}">Profile</a>
+    <a href="{{ url_for('profile') }}">My Account</a>
     <a href="{{ url_for('logout') }}" class="mobile-logout">Logout</a>
     {% else %}
     <a href="{{ url_for('login') }}">Login</a>

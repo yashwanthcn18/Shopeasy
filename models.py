@@ -11,6 +11,7 @@ class User(db.Model):
     name         = db.Column(db.String(100), nullable=False)
     email        = db.Column(db.String(150), unique=True, nullable=False)
     password     = db.Column(db.String(200), nullable=False)
+    phone        = db.Column(db.String(20))
     is_verified  = db.Column(db.Boolean, default=False)
     verify_token = db.Column(db.String(100))
 
@@ -38,12 +39,14 @@ class CartItem(db.Model):
 
 # ── Order ─────────────────────────────────────────────────────────────────────
 class Order(db.Model):
-    id         = db.Column(db.Integer, primary_key=True)
-    user_id    = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    total      = db.Column(db.Float, nullable=False)
-    address    = db.Column(db.Text, nullable=False)
-    status     = db.Column(db.String(50), default='Placed')   # Placed / Shipped / Delivered
-    created_at = db.Column(db.DateTime, server_default=db.func.now())
+    id                 = db.Column(db.Integer, primary_key=True)
+    user_id            = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    total              = db.Column(db.Float, nullable=False)
+    address            = db.Column(db.Text, nullable=False)
+    status             = db.Column(db.String(50), default='Placed')
+    payment_status     = db.Column(db.String(50), default='Paid')
+    fulfillment_status = db.Column(db.String(50), default='Unfulfilled')
+    created_at         = db.Column(db.DateTime, server_default=db.func.now())
 
     items = db.relationship('OrderItem', backref='order')
 
@@ -58,6 +61,20 @@ class OrderItem(db.Model):
     price      = db.Column(db.Float, nullable=False)   # price at time of purchase
 
     product = db.relationship('Product')
+
+
+# ── Saved Address ─────────────────────────────────────────────────────────────
+class Address(db.Model):
+    id         = db.Column(db.Integer, primary_key=True)
+    user_id    = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    name       = db.Column(db.String(100))
+    line1      = db.Column(db.String(200))
+    line2      = db.Column(db.String(200))
+    city       = db.Column(db.String(100))
+    state      = db.Column(db.String(100))
+    pincode    = db.Column(db.String(20))
+    phone      = db.Column(db.String(20))
+    is_default = db.Column(db.Boolean, default=False)
 
 
 # ── Newsletter Subscriber ─────────────────────────────────────────────────────

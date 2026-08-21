@@ -1,58 +1,253 @@
-<!-- profile.html — User profile and order history -->
 {% extends 'base.html' %}
-{% block title %}My Profile{% endblock %}
+{% block title %}My Account{% endblock %}
 
 {% block content %}
-<h1 class="page-title">My Profile</h1>
+<div class="account-page">
 
-<div class="profile-layout">
-
-  <!-- Update details form -->
-  <div class="checkout-form-box">
-    <h3>Account Details</h3>
-    <form method="POST" action="{{ url_for('profile') }}">
-
-      <label>Full Name</label>
-      <input type="text" name="name" value="{{ user.name }}" required />
-
-      <label>Email</label>
-      <input type="email" name="email" value="{{ user.email }}" required />
-
-      <label>New Password <span style="font-weight:400; color:#999;">(leave blank to keep current)</span></label>
-      <div style="position:relative; margin-bottom:16px;">
-        <input type="password" name="password" id="profilePw" placeholder="••••••••"
-               style="width:100%; padding:10px 40px 10px 12px;" autocomplete="new-password" />
-        <button type="button"
-                onclick="var i=document.getElementById('profilePw'); i.type=i.type==='password'?'text':'password';"
-                style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:1rem;color:#999;">👁</button>
-      </div>
-
-      <button class="btn btn-dark" type="submit">Save Changes</button>
-    </form>
+  <div class="account-header">
+    <h1 class="account-title">MY ACCOUNT</h1>
+    <a href="{{ url_for('logout') }}" class="btn-logout-account">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+      </svg>
+      Log out
+    </a>
   </div>
 
-  <!-- Recent orders summary -->
-  <div class="order-summary-box">
-    <h3>Recent Orders</h3>
+  <!-- ── Order History ── -->
+  <section id="orders" class="account-section">
+    <h2 class="account-section-title">ORDER HISTORY</h2>
+
     {% if orders %}
-      {% for o in orders[:5] %}
-      <div style="border-bottom:1px solid #f0f0f0; padding:12px 0;">
-        <div style="display:flex; justify-content:space-between; font-size:0.88rem;">
-          <strong>Order #{{ o.id }}</strong>
-          <span class="status-badge">{{ o.status }}</span>
-        </div>
-        <div style="font-size:0.82rem; color:#777; margin-top:4px;">
-          ₹{{ o.total }} · {{ o.items|length }} item(s)
+    <div class="order-table-wrap">
+      <table class="order-table">
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>Order</th>
+            <th>Date</th>
+            <th>Payment</th>
+            <th>Fulfillment</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for o in orders %}
+          <tr>
+            <td>
+              {% if o.items %}
+              <div class="order-product-cell">
+                {% if o.items[0].product and o.items[0].product.image_url %}
+                <img src="{{ o.items[0].product.image_url }}" alt="{{ o.items[0].product.name }}" class="order-thumb" />
+                {% endif %}
+                <span class="order-product-name">
+                  {{ o.items[0].product.name if o.items[0].product else '—' }}
+                  {% if o.items|length > 1 %}<span style="color:#999; font-size:0.78rem;"> +{{ o.items|length - 1 }} more</span>{% endif %}
+                </span>
+              </div>
+              {% else %}—{% endif %}
+            </td>
+            <td><a href="{{ url_for('order_detail', order_id=o.id) }}" class="order-link">#{{ o.id }}</a></td>
+            <td style="white-space:nowrap;">
+              {% if o.created_at %}{{ o.created_at.strftime('%b %d, %Y') }}{% else %}—{% endif %}
+            </td>
+            <td><span class="fulfillment-badge paid">{{ o.payment_status or 'Paid' }}</span></td>
+            <td><span class="fulfillment-badge {{ 'fulfilled' if (o.fulfillment_status or 'Unfulfilled') == 'Fulfilled' else 'unfulfilled' }}">{{ o.fulfillment_status or 'Unfulfilled' }}</span></td>
+            <td>₹{{ "%.2f"|format(o.total) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="account-empty">You haven't placed any orders yet.</p>
+    {% endif %}
+  </section>
+
+  <!-- ── Account Details ── -->
+  <section id="details" class="account-section">
+    <h2 class="account-section-title">ACCOUNT DETAILS</h2>
+
+    <div class="account-details-grid">
+
+      <!-- Name + Phone + Password -->
+      <div class="account-card">
+        <h3 class="account-card-title">Personal Info</h3>
+        <form method="POST" action="{{ url_for('profile') }}">
+          <input type="hidden" name="action" value="update_details" />
+
+          <label>Full Name</label>
+          <input type="text" name="name" value="{{ user.name }}" required />
+
+          <label>Phone</label>
+          <input type="tel" name="phone" value="{{ user.phone or '' }}" placeholder="+91 00000 00000" />
+
+          <label>New Password <span style="font-weight:400; color:#999;">(leave blank to keep current)</span></label>
+          <div style="position:relative;">
+            <input type="password" name="password" id="acctPw" placeholder="••••••••"
+                   style="width:100%; padding:10px 40px 10px 12px;" autocomplete="new-password" />
+            <button type="button"
+                    onclick="var i=document.getElementById('acctPw'); i.type=i.type==='password'?'text':'password';"
+                    style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:1rem;color:#999;">👁</button>
+          </div>
+
+          <button class="btn btn-dark" type="submit" style="margin-top:16px;">Save Changes</button>
+        </form>
+      </div>
+
+      <!-- Email change -->
+      <div class="account-card">
+        <h3 class="account-card-title">Email Address</h3>
+        <p style="font-size:0.85rem; color:#666; margin-bottom:16px;">
+          Current: <strong>{{ user.email }}</strong>
+        </p>
+        <form method="POST" action="{{ url_for('profile') }}">
+          <input type="hidden" name="action" value="change_email" />
+          <label>New Email Address</label>
+          <input type="email" name="email" placeholder="new@example.com" required />
+          <p style="font-size:0.78rem; color:#999; margin:8px 0 16px;">
+            A verification link will be sent to the new email. You will be logged out until verified.
+          </p>
+          <button class="btn btn-dark" type="submit">Change Email</button>
+        </form>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ── Addresses ── -->
+  <section id="addresses" class="account-section">
+    <h2 class="account-section-title">ADDRESSES</h2>
+
+    {% if addresses %}
+    <div class="address-grid">
+      {% for addr in addresses %}
+      <div class="address-card {{ 'address-default' if addr.is_default }}">
+        {% if addr.is_default %}<span class="default-badge">Default</span>{% endif %}
+        <p class="address-name">{{ addr.name }}</p>
+        <p class="address-line">{{ addr.line1 }}{% if addr.line2 %}, {{ addr.line2 }}{% endif %}</p>
+        <p class="address-line">{{ addr.city }}{% if addr.state %}, {{ addr.state }}{% endif %} {{ addr.pincode }}</p>
+        {% if addr.phone %}<p class="address-line">{{ addr.phone }}</p>{% endif %}
+        <div class="address-actions">
+          {% if not addr.is_default %}
+          <form method="POST" action="{{ url_for('set_default_address', addr_id=addr.id) }}" style="display:inline;">
+            <button type="submit" class="btn-link">Set as default</button>
+          </form>
+          {% endif %}
+          <form method="POST" action="{{ url_for('delete_address', addr_id=addr.id) }}" style="display:inline;"
+                onsubmit="return confirm('Remove this address?')">
+            <button type="submit" class="btn-link btn-link-red">Remove</button>
+          </form>
         </div>
       </div>
       {% endfor %}
-      <a href="{{ url_for('orders') }}" style="display:block; margin-top:14px; font-size:0.85rem; color:#222; font-weight:600;">
-        View all orders →
-      </a>
+    </div>
     {% else %}
-      <p style="font-size:0.88rem; color:#999;">No orders yet.</p>
+    <p class="account-empty">No saved addresses yet.</p>
     {% endif %}
-  </div>
+
+    <!-- Add new address -->
+    <details class="add-address-details">
+      <summary class="add-address-summary">+ Add New Address</summary>
+      <form method="POST" action="{{ url_for('add_address') }}" class="add-address-form">
+        <div class="addr-form-grid">
+          <div>
+            <label>Full Name</label>
+            <input type="text" name="name" placeholder="John Doe" required />
+          </div>
+          <div>
+            <label>Phone</label>
+            <input type="tel" name="phone" placeholder="+91 00000 00000" />
+          </div>
+          <div style="grid-column: span 2;">
+            <label>Address Line 1</label>
+            <input type="text" name="line1" placeholder="Street / House No." required />
+          </div>
+          <div style="grid-column: span 2;">
+            <label>Address Line 2 <span style="color:#999; font-weight:400;">(optional)</span></label>
+            <input type="text" name="line2" placeholder="Landmark, Area" />
+          </div>
+          <div>
+            <label>City</label>
+            <input type="text" name="city" required />
+          </div>
+          <div>
+            <label>State</label>
+            <input type="text" name="state" required />
+          </div>
+          <div>
+            <label>PIN Code</label>
+            <input type="text" name="pincode" required />
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; margin-top:24px;">
+            <input type="checkbox" name="is_default" value="1" id="makeDefault" />
+            <label for="makeDefault" style="margin:0; font-size:0.88rem;">Set as default address</label>
+          </div>
+        </div>
+        <button class="btn btn-dark" type="submit" style="margin-top:16px;">Save Address</button>
+      </form>
+    </details>
+
+  </section>
 
 </div>
+
+<style>
+.account-page { max-width: 960px; margin: 0 auto; padding: 40px 20px 80px; }
+.account-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 40px; border-bottom: 2px solid #111; padding-bottom: 16px; }
+.account-title { font-family: 'Playfair Display', serif; font-size: 2rem; font-weight: 700; letter-spacing: 0.04em; }
+.btn-logout-account { display: inline-flex; align-items: center; font-size: 0.82rem; color: #555; border: 1px solid #ccc; padding: 7px 14px; border-radius: 20px; text-decoration: none; transition: all .2s; }
+.btn-logout-account:hover { background: #111; color: #fff; border-color: #111; }
+
+.account-section { margin-bottom: 52px; }
+.account-section-title { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.12em; color: #888; margin-bottom: 20px; text-transform: uppercase; }
+
+/* Order table */
+.order-table-wrap { overflow-x: auto; }
+.order-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+.order-table th { text-align: left; padding: 10px 14px; border-bottom: 2px solid #111; font-size: 0.78rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #555; }
+.order-table td { padding: 14px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+.order-product-cell { display: flex; align-items: center; gap: 12px; }
+.order-thumb { width: 48px; height: 48px; object-fit: cover; border-radius: 4px; border: 1px solid #eee; flex-shrink: 0; }
+.order-product-name { font-size: 0.85rem; }
+.order-link { color: #111; font-weight: 600; text-decoration: underline; }
+.order-link:hover { color: #c9a84c; }
+.fulfillment-badge { font-size: 0.73rem; font-weight: 600; padding: 3px 9px; border-radius: 12px; }
+.fulfillment-badge.paid { background: #e8f5e9; color: #2e7d32; }
+.fulfillment-badge.fulfilled { background: #e3f2fd; color: #1565c0; }
+.fulfillment-badge.unfulfilled { background: #fff8e1; color: #f57f17; }
+
+/* Account details */
+.account-details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+@media(max-width:640px){ .account-details-grid { grid-template-columns: 1fr; } }
+.account-card { background: #fafafa; border: 1px solid #eee; border-radius: 8px; padding: 24px; }
+.account-card label { display: block; font-size: 0.8rem; color: #555; margin-bottom: 5px; margin-top: 14px; font-weight: 500; }
+.account-card label:first-of-type { margin-top: 0; }
+.account-card input[type="text"], .account-card input[type="email"], .account-card input[type="tel"], .account-card input[type="password"] { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.88rem; font-family: inherit; box-sizing: border-box; }
+.account-card-title { font-size: 0.95rem; font-weight: 600; margin-bottom: 18px; }
+
+/* Addresses */
+.address-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
+.address-card { border: 1px solid #ddd; border-radius: 8px; padding: 18px; font-size: 0.85rem; position: relative; }
+.address-default { border-color: #111; border-width: 2px; }
+.default-badge { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; background: #111; color: #fff; padding: 2px 8px; border-radius: 10px; display: inline-block; margin-bottom: 10px; }
+.address-name { font-weight: 600; margin-bottom: 4px; }
+.address-line { color: #555; margin-bottom: 2px; }
+.address-actions { margin-top: 14px; display: flex; gap: 14px; }
+.btn-link { background: none; border: none; padding: 0; font-size: 0.8rem; cursor: pointer; text-decoration: underline; color: #555; }
+.btn-link:hover { color: #111; }
+.btn-link-red { color: #c62828; }
+.btn-link-red:hover { color: #b71c1c; }
+
+.add-address-details { border: 1px dashed #ccc; border-radius: 8px; padding: 18px; }
+.add-address-summary { font-size: 0.85rem; font-weight: 600; cursor: pointer; color: #555; list-style: none; }
+.add-address-summary::-webkit-details-marker { display: none; }
+.add-address-form { margin-top: 20px; }
+.addr-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.addr-form-grid label { display: block; font-size: 0.8rem; color: #555; margin-bottom: 5px; font-weight: 500; }
+.addr-form-grid input[type="text"], .addr-form-grid input[type="tel"] { width: 100%; padding: 9px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.88rem; font-family: inherit; box-sizing: border-box; }
+@media(max-width:500px){ .addr-form-grid { grid-template-columns: 1fr; } .addr-form-grid > div[style*="span 2"] { grid-column: span 1; } }
+
+.account-empty { color: #999; font-size: 0.88rem; }
+</style>
 {% endblock %}

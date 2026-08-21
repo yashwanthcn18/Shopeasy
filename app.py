@@ -3,7 +3,7 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
-from models import db, User, Product, CartItem, Order, OrderItem, NewsletterSubscriber
+from models import db, User, Product, CartItem, Order, OrderItem, NewsletterSubscriber, Address
 import os, re, random, time, requests, secrets
 from authlib.integrations.flask_client import OAuth
 
@@ -441,25 +441,111 @@ def reset_password():
     return render_template('reset_password.html')
 
 
-@app.route('/profile', methods=['GET', 'POST'])
+@app.route('/profile')
+def profile_redirect():
+    return redirect('/account')
+
+@app.route('/account', methods=['GET', 'POST'])
 def profile():
     user = current_user()
     if not user:
         return redirect(url_for('login'))
     if request.method == 'POST':
-        user.name  = request.form['name']
-        new_email  = request.form['email']
-        if new_email != user.email and User.query.filter_by(email=new_email).first():
-            flash('That email is already used by another account.')
-            return redirect(url_for('profile'))
-        user.email = new_email
-        if request.form.get('password'):
-            user.password = generate_password_hash(request.form['password'])
-        db.session.commit()
-        flash('Profile updated.')
+        action = request.form.get('action')
+
+        if action == 'update_details':
+            user.name  = request.form.get('name', user.name).strip()
+            user.phone = request.form.get('phone', '').strip()
+            new_pw = request.form.get('password', '').strip()
+            if new_pw:
+                user.password = generate_password_hash(new_pw)
+            db.session.commit()
+            flash('Account details updated.')
+
+        elif action == 'change_email':
+            new_email = request.form.get('email', '').strip().lower()
+            if not new_email:
+                flash('Email cannot be empty.')
+            elif new_email == user.email:
+                flash('That is already your current email.')
+            elif User.query.filter_by(email=new_email).first():
+                flash('That email is already used by another account.')
+            else:
+                token = secrets.token_urlsafe(32)
+                user.verify_token = token
+                user.is_verified  = False
+                user.email        = new_email
+                db.session.commit()
+                link = url_for('verify_email', token=token, _external=True, _scheme='https')
+                send_email(new_email, 'ShopEasy — Verify your new email',
+                           f'Hi {user.name},\n\nPlease verify your new email:\n{link}\n\nThis link works once.')
+                session.clear()
+                flash('Email changed. A verification link was sent to your new email. Please verify before logging in again.')
+                return redirect(url_for('login'))
+
         return redirect(url_for('profile'))
+
     user_orders = Order.query.filter_by(user_id=user.id).order_by(Order.id.desc()).all()
-    return render_template('profile.html', user=user, orders=user_orders)
+    addresses   = Address.query.filter_by(user_id=user.id).order_by(Address.is_default.desc()).all()
+    return render_template('profile.html', user=user, orders=user_orders, addresses=addresses)
+
+
+@app.route('/account/order/<int:order_id>')
+def order_detail(order_id):
+    user = current_user()
+    if not user:
+        return redirect(url_for('login'))
+    order = Order.query.filter_by(id=order_id, user_id=user.id).first_or_404()
+    return render_template('order_detail.html', user=user, order=order)
+
+
+@app.route('/account/addresses/add', methods=['POST'])
+def add_address():
+    user = current_user()
+    if not user:
+        return redirect(url_for('login'))
+    make_default = request.form.get('is_default') == '1'
+    if make_default:
+        Address.query.filter_by(user_id=user.id).update({'is_default': False})
+    addr = Address(
+        user_id    = user.id,
+        name       = request.form.get('name', '').strip(),
+        line1      = request.form.get('line1', '').strip(),
+        line2      = request.form.get('line2', '').strip(),
+        city       = request.form.get('city', '').strip(),
+        state      = request.form.get('state', '').strip(),
+        pincode    = request.form.get('pincode', '').strip(),
+        phone      = request.form.get('phone', '').strip(),
+        is_default = make_default,
+    )
+    db.session.add(addr)
+    db.session.commit()
+    flash('Address saved.')
+    return redirect(url_for('profile') + '#addresses')
+
+
+@app.route('/account/addresses/delete/<int:addr_id>', methods=['POST'])
+def delete_address(addr_id):
+    user = current_user()
+    if not user:
+        return redirect(url_for('login'))
+    addr = Address.query.filter_by(id=addr_id, user_id=user.id).first_or_404()
+    db.session.delete(addr)
+    db.session.commit()
+    flash('Address removed.')
+    return redirect(url_for('profile') + '#addresses')
+
+
+@app.route('/account/addresses/default/<int:addr_id>', methods=['POST'])
+def set_default_address(addr_id):
+    user = current_user()
+    if not user:
+        return redirect(url_for('login'))
+    Address.query.filter_by(user_id=user.id).update({'is_default': False})
+    addr = Address.query.filter_by(id=addr_id, user_id=user.id).first_or_404()
+    addr.is_default = True
+    db.session.commit()
+    return redirect(url_for('profile') + '#addresses')
 
 
 @app.route('/newsletter/subscribe', methods=['POST'])
@@ -702,11 +788,7 @@ def checkout():
 
 @app.route('/orders')
 def orders():
-    if not current_user():
-        return redirect(url_for('login'))
-
-    user_orders = Order.query.filter_by(user_id=session['user_id']).order_by(Order.id.desc()).all()
-    return render_template('orders.html', orders=user_orders, user=current_user())
+    return redirect(url_for('profile') + '#orders')
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -940,7 +1022,22 @@ with app.app_context():
             conn.commit()
             app.logger.info('Migration: added verify_token column')
         except Exception:
-            pass  # column already exists — safe to ignore
+            pass
+        try:
+            conn.execute(db.text('ALTER TABLE "user" ADD COLUMN phone VARCHAR(20)'))
+            conn.commit()
+        except Exception:
+            pass
+        try:
+            conn.execute(db.text('ALTER TABLE "order" ADD COLUMN payment_status VARCHAR(50) DEFAULT \'Paid\''))
+            conn.commit()
+        except Exception:
+            pass
+        try:
+            conn.execute(db.text('ALTER TABLE "order" ADD COLUMN fulfillment_status VARCHAR(50) DEFAULT \'Unfulfilled\''))
+            conn.commit()
+        except Exception:
+            pass
 
     # Mark all existing users (who have no verify_token) as verified
     # so they aren't locked out after the verification feature was added

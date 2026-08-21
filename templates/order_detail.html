@@ -1,0 +1,119 @@
+{% extends 'base.html' %}
+{% block title %}Order #{{ order.id }}{% endblock %}
+
+{% block content %}
+<div class="account-page">
+
+  <div class="account-header">
+    <div>
+      <h1 class="account-title">MY ACCOUNT</h1>
+      <p style="font-size:0.85rem; color:#888; margin-top:4px;">
+        ORDER #{{ order.id }} &nbsp;·&nbsp;
+        Placed on {% if order.created_at %}{{ order.created_at.strftime('%B %d, %Y at %I:%M %p') }}{% else %}—{% endif %}
+      </p>
+    </div>
+    <a href="{{ url_for('profile') }}" class="btn-logout-account">
+      ← Return to account
+    </a>
+  </div>
+
+  <!-- Order items table -->
+  <section class="account-section">
+    <div class="order-table-wrap">
+      <table class="order-table order-detail-table">
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>SKU</th>
+            <th>Price</th>
+            <th>Quantity</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in order.items %}
+          <tr>
+            <td>
+              <div class="order-product-cell">
+                {% if item.product and item.product.image_url %}
+                <img src="{{ item.product.image_url }}" alt="{{ item.product.name }}" class="order-thumb" />
+                {% endif %}
+                <span>{{ item.product.name if item.product else '—' }}</span>
+              </div>
+            </td>
+            <td style="color:#999; font-size:0.82rem;">#{{ item.product_id }}</td>
+            <td>₹{{ "%.2f"|format(item.price) }}</td>
+            <td>{{ item.quantity }}</td>
+            <td>₹{{ "%.2f"|format(item.price * item.quantity) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Totals -->
+    <div class="order-totals">
+      <div class="totals-row">
+        <span>Subtotal</span>
+        <span>₹{{ "%.2f"|format(order.total) }}</span>
+      </div>
+      <div class="totals-row">
+        <span>Shipping</span>
+        <span>₹0.00</span>
+      </div>
+      <div class="totals-row totals-total">
+        <span>Total</span>
+        <span>₹{{ "%.2f"|format(order.total) }}</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Addresses -->
+  <div class="order-address-grid">
+
+    <div class="order-address-box">
+      <h3 class="order-address-title">BILLING ADDRESS</h3>
+      <p style="font-size:0.8rem; color:#888; margin-bottom:10px;">
+        Payment Status: <strong style="color:#2e7d32;">{{ order.payment_status or 'Paid' }}</strong>
+      </p>
+      <p class="order-address-text">{{ order.address }}</p>
+    </div>
+
+    <div class="order-address-box">
+      <h3 class="order-address-title">SHIPPING ADDRESS</h3>
+      <p style="font-size:0.8rem; color:#888; margin-bottom:10px;">
+        Fulfillment Status: <strong style="color:{{ '#1565c0' if (order.fulfillment_status or '') == 'Fulfilled' else '#f57f17' }};">{{ order.fulfillment_status or 'Unfulfilled' }}</strong>
+      </p>
+      <p class="order-address-text">{{ order.address }}</p>
+    </div>
+
+  </div>
+
+</div>
+
+<style>
+.account-page { max-width: 960px; margin: 0 auto; padding: 40px 20px 80px; }
+.account-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 40px; border-bottom: 2px solid #111; padding-bottom: 16px; gap: 16px; flex-wrap: wrap; }
+.account-title { font-family: 'Playfair Display', serif; font-size: 2rem; font-weight: 700; letter-spacing: 0.04em; }
+.btn-logout-account { display: inline-flex; align-items: center; font-size: 0.82rem; color: #555; border: 1px solid #ccc; padding: 7px 14px; border-radius: 20px; text-decoration: none; white-space: nowrap; }
+.btn-logout-account:hover { background: #111; color: #fff; border-color: #111; }
+
+.account-section { margin-bottom: 40px; }
+.order-table-wrap { overflow-x: auto; }
+.order-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+.order-table th { text-align: left; padding: 10px 14px; border-bottom: 2px solid #111; font-size: 0.78rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #555; }
+.order-table td { padding: 14px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+.order-product-cell { display: flex; align-items: center; gap: 12px; }
+.order-thumb { width: 52px; height: 52px; object-fit: cover; border-radius: 4px; border: 1px solid #eee; flex-shrink: 0; }
+
+.order-totals { max-width: 320px; margin-left: auto; margin-top: 20px; border-top: 1px solid #eee; padding-top: 16px; }
+.totals-row { display: flex; justify-content: space-between; font-size: 0.88rem; padding: 6px 0; color: #555; }
+.totals-total { font-weight: 700; font-size: 1rem; color: #111; border-top: 1px solid #ddd; margin-top: 8px; padding-top: 12px; }
+
+.order-address-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+@media(max-width:600px){ .order-address-grid { grid-template-columns: 1fr; } }
+.order-address-box { border: 1px solid #eee; border-radius: 8px; padding: 24px; }
+.order-address-title { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #888; margin-bottom: 12px; }
+.order-address-text { font-size: 0.88rem; color: #333; line-height: 1.7; white-space: pre-line; }
+</style>
+{% endblock %}
