@@ -3,3 +3,4 @@ flask-sqlalchemy
 werkzeug
 psycopg2-binary
 requests
+authlib

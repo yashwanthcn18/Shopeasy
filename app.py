@@ -5,6 +5,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from models import db, User, Product, CartItem, Order, OrderItem, NewsletterSubscriber
 import os, re, random, time, requests, secrets
+from authlib.integrations.flask_client import OAuth
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'change-this-secret-key')  # reads from environment on Render
@@ -15,6 +16,27 @@ app.config['UPLOAD_FOLDER'] = os.path.join('static', 'images')   # where uploade
 ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'webp'}
 
 db.init_app(app)
+
+# ── OAuth (Google + Facebook social login) ────────────────────────────────────
+oauth = OAuth(app)
+
+google = oauth.register(
+    name='google',
+    client_id=os.environ.get('GOOGLE_CLIENT_ID'),
+    client_secret=os.environ.get('GOOGLE_CLIENT_SECRET'),
+    server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
+    client_kwargs={'scope': 'openid email profile'},
+)
+
+facebook = oauth.register(
+    name='facebook',
+    client_id=os.environ.get('FACEBOOK_APP_ID'),
+    client_secret=os.environ.get('FACEBOOK_APP_SECRET'),
+    access_token_url='https://graph.facebook.com/oauth/access_token',
+    authorize_url='https://www.facebook.com/dialog/oauth',
+    api_base_url='https://graph.facebook.com/',
+    client_kwargs={'scope': 'email public_profile'},
+)
 
 
 # ── Email helper — Mailjet HTTP API (works on Render free tier) ───────────────
@@ -231,6 +253,83 @@ def resend_verification():
     # Always show same message to avoid email enumeration
     flash('If that email exists and is unverified, a new link has been sent.')
     return redirect(url_for('login'))
+
+
+# ── Google OAuth ─────────────────────────────────────────────────────────────
+@app.route('/auth/google')
+def google_login():
+    redirect_uri = url_for('google_callback', _external=True)
+    return google.authorize_redirect(redirect_uri)
+
+@app.route('/auth/google/callback')
+def google_callback():
+    try:
+        token     = google.authorize_access_token()
+        user_info = token.get('userinfo')
+        email     = user_info['email']
+        name      = user_info.get('name', email.split('@')[0])
+    except Exception as e:
+        app.logger.error(f'Google OAuth error: {e}')
+        flash('Google login failed. Please try again.')
+        return redirect(url_for('login'))
+
+    # Find existing user or create one (already verified via Google)
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        user = User(name=name, email=email,
+                    password=generate_password_hash(secrets.token_hex(16)),
+                    is_verified=True, verify_token=None)
+        db.session.add(user)
+        db.session.commit()
+    elif not user.is_verified:
+        # Mark existing unverified account as verified since Google confirmed the email
+        user.is_verified = True
+        db.session.commit()
+
+    session.permanent  = True
+    session['user_id'] = user.id
+    merge_guest_cart(user.id)
+    return redirect(url_for('home'))
+
+
+# ── Facebook OAuth ────────────────────────────────────────────────────────────
+@app.route('/auth/facebook')
+def facebook_login():
+    redirect_uri = url_for('facebook_callback', _external=True)
+    return facebook.authorize_redirect(redirect_uri)
+
+@app.route('/auth/facebook/callback')
+def facebook_callback():
+    try:
+        facebook.authorize_access_token()
+        resp      = facebook.get('me?fields=id,name,email')
+        user_info = resp.json()
+        email     = user_info.get('email')
+        name      = user_info.get('name', 'User')
+    except Exception as e:
+        app.logger.error(f'Facebook OAuth error: {e}')
+        flash('Facebook login failed. Please try again.')
+        return redirect(url_for('login'))
+
+    if not email:
+        flash('Facebook did not share your email. Please use email/password login.')
+        return redirect(url_for('login'))
+
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        user = User(name=name, email=email,
+                    password=generate_password_hash(secrets.token_hex(16)),
+                    is_verified=True, verify_token=None)
+        db.session.add(user)
+        db.session.commit()
+    elif not user.is_verified:
+        user.is_verified = True
+        db.session.commit()
+
+    session.permanent  = True
+    session['user_id'] = user.id
+    merge_guest_cart(user.id)
+    return redirect(url_for('home'))
 
 
 @app.route('/verify-email/<token>')
