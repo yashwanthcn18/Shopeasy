@@ -17,11 +17,15 @@
       {% if user %}
       <a href="{{ url_for('profile') }}">My Account</a>
       <a href="{{ url_for('logout') }}" class="logout-link">Logout</a>
+      {% else %}
+      <a href="{{ url_for('login') }}">Login</a>
       {% endif %}
     </div>
 
     <!-- Centre: brand logo -->
-    <a class="nav-logo" href="{{ url_for('home') }}">Shop<span>Easy</span></a>
+    <a class="nav-logo" href="{{ url_for('home') }}">
+      <img src="{{ url_for('static', filename='images/kapiq-dark.png') }}" alt="KAPIQ" class="nav-logo-img" />
+    </a>
 
     <!-- Right: icon group (search, profile/login, cart) -->
     <div class="nav-icons">

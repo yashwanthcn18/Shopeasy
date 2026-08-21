@@ -35,18 +35,17 @@ nav {
   z-index: 100;
 }
 
-/* Brand logo — Playfair Display for premium serif feel */
+/* Brand logo */
 .nav-logo {
-  font-family: 'Playfair Display', serif;
-  font-size: 1.35rem;
-  font-weight: 700;
-  color: #fff;
-  letter-spacing: 0.04em;
-  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.nav-logo span {
-  color: #c9a84c; /* gold accent */
+.nav-logo-img {
+  height: 40px;
+  width: auto;
+  object-fit: contain;
 }
 
 .nav-links {
