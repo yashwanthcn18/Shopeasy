@@ -11,7 +11,7 @@
 
   <!-- ── Navbar (always visible) ── -->
   <nav>
-    <a class="nav-logo" href="{{ url_for('home') }}">ShopEasy</a>
+    <a class="nav-logo" href="{{ url_for('home') }}">The Medal <span>Holder</span></a>
 
     <!-- Search bar — desktop only -->
     <form class="nav-search" action="{{ url_for('home') }}" method="GET">
@@ -36,7 +36,7 @@
       </a>
       <a href="{{ url_for('orders') }}">My Orders</a>
       <a href="{{ url_for('profile') }}">Profile</a>
-      <a href="{{ url_for('logout') }}">Logout</a>
+      <a href="{{ url_for('logout') }}" class="logout-link">Logout</a>
       {% else %}
       <a href="{{ url_for('login') }}">Login</a>
       <a href="{{ url_for('signup') }}" class="btn btn-dark" style="padding:6px 18px; font-size:0.88rem;">Sign Up</a>
