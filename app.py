@@ -45,7 +45,8 @@ def send_email(to_email, subject, body):
         )
         if resp.status_code == 200:
             return True
-        app.logger.error(f'Mailjet error: {resp.text}')
+        # Log full response so we can debug in Render logs
+        app.logger.error(f'Mailjet error {resp.status_code}: {resp.text}')
         return False
     except Exception as e:
         app.logger.error(f'Email send failed: {e}')
@@ -170,19 +171,19 @@ def signup():
         db.session.add(user)
         db.session.commit()
 
-        # Send verification email
+        # Send verification email — do NOT log in yet, require verification first
         link = url_for('verify_email', token=token, _external=True)
-        send_email(
+        sent = send_email(
             email,
             'ShopEasy — Please verify your email',
             f"Hi {name},\n\nClick the link below to verify your ShopEasy account:\n\n{link}\n\nThis link works only once.\n\n— ShopEasy Team"
         )
 
-        session.permanent  = True
-        session['user_id'] = user.id
-        merge_guest_cart(user.id)
-        flash('Account created! Please check your email to verify your account.')
-        return redirect(url_for('home'))
+        if sent:
+            flash('Account created! Check your email and click the verification link to login.')
+        else:
+            flash('Account created but we could not send a verification email. Contact support.')
+        return redirect(url_for('login'))
 
     return render_template('signup.html')
 
@@ -200,12 +201,36 @@ def login():
             flash('Invalid email or password.')
             return redirect(url_for('login'))
 
+        # Block login if email is not verified yet
+        if not user.is_verified:
+            flash('Please verify your email first. Check your inbox for the verification link.')
+            return redirect(url_for('login'))
+
         session.permanent = True
         session['user_id'] = user.id
         merge_guest_cart(user.id)
         return redirect(url_for('home'))
 
     return render_template('login.html')
+
+
+@app.route('/resend-verification', methods=['POST'])
+def resend_verification():
+    email = request.form.get('email', '').strip()
+    user  = User.query.filter_by(email=email).first()
+    if user and not user.is_verified:
+        token = secrets.token_urlsafe(32)
+        user.verify_token = token
+        db.session.commit()
+        link = url_for('verify_email', token=token, _external=True)
+        send_email(
+            email,
+            'ShopEasy — Verify your email',
+            f"Hi {user.name},\n\nHere is your new verification link:\n\n{link}\n\n— ShopEasy Team"
+        )
+    # Always show same message to avoid email enumeration
+    flash('If that email exists and is unverified, a new link has been sent.')
+    return redirect(url_for('login'))
 
 
 @app.route('/verify-email/<token>')
