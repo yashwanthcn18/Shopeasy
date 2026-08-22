@@ -589,10 +589,8 @@ def newsletter_subscribe():
 
 @app.route('/cart/data')
 def cart_data():
-    if not current_user():
-        return jsonify(items=[], total=0)
-
-    if session.get('guest'):
+    if 'user_id' not in session:
+        # Guest cart from session
         result, total = [], 0
         for pid_str, qty in session.get('guest_cart', {}).items():
             p = Product.query.get(int(pid_str))
@@ -744,23 +742,20 @@ def remove_guest_cart(product_id):
 
 @app.route('/cart')
 def cart():
-    if not current_user():
-        return redirect(url_for('login'))
+    if 'user_id' in session:
+        items = CartItem.query.filter_by(user_id=session['user_id']).all()
+        total = sum(i.product.price * i.quantity for i in items)
+        return render_template('cart.html', items=items, total=total, user=current_user(), is_guest=False)
 
-    if session.get('guest'):
-        guest_cart = session.get('guest_cart', {})
-        items, total = [], 0
-        for pid_str, qty in guest_cart.items():
-            p = Product.query.get(int(pid_str))
-            if p:
-                items.append({'product': p, 'quantity': qty, 'id': p.id})
-                total += p.price * qty
-        return render_template('cart.html', items=items, total=total,
-                               user=current_user(), is_guest=True)
-
-    items = CartItem.query.filter_by(user_id=session['user_id']).all()
-    total = sum(i.product.price * i.quantity for i in items)
-    return render_template('cart.html', items=items, total=total, user=current_user(), is_guest=False)
+    # Guest — read from session
+    guest_cart = session.get('guest_cart', {})
+    items, total = [], 0
+    for pid_str, qty in guest_cart.items():
+        p = Product.query.get(int(pid_str))
+        if p:
+            items.append({'product': p, 'quantity': qty, 'id': p.id})
+            total += p.price * qty
+    return render_template('cart.html', items=items, total=total, user=None, is_guest=True)
 
 
 # ═════════════════════════════════════════════════════════════════════════════
