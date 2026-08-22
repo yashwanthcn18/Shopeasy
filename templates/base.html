@@ -52,8 +52,19 @@
       </a>
       {% endif %}
 
-      <!-- Cart icon with badge -->
+      <!-- Wishlist icon — only for logged-in users -->
       {% if user %}
+      <a href="{{ url_for('wishlist') }}" class="nav-icon-btn" title="Wishlist" style="position:relative;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+        </svg>
+        {% if wishlist_count and wishlist_count > 0 %}
+        <span class="cart-badge" style="background:#e53935;">{{ wishlist_count }}</span>
+        {% endif %}
+      </a>
+      {% endif %}
+
+      <!-- Cart icon with badge — guests can open cart too -->
       <a href="#" class="nav-icon-btn nav-cart-btn" id="cartToggle" title="Cart" style="position:relative;">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/>
@@ -62,13 +73,6 @@
         <span class="cart-badge">{{ cart_count }}</span>
         {% endif %}
       </a>
-      {% else %}
-      <a href="{{ url_for('login') }}" class="nav-icon-btn" title="Cart">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/>
-        </svg>
-      </a>
-      {% endif %}
 
       <!-- Hamburger — mobile only -->
       <button class="hamburger-btn" onclick="toggleMobileMenu()">

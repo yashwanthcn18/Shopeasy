@@ -3,7 +3,7 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
-from models import db, User, Product, CartItem, Order, OrderItem, NewsletterSubscriber, Address, Payment
+from models import db, User, Product, CartItem, Order, OrderItem, NewsletterSubscriber, Address, Payment, Wishlist
 import os, re, random, time, requests, secrets, hmac, hashlib
 import razorpay
 from authlib.integrations.flask_client import OAuth
@@ -89,13 +89,15 @@ def send_email(to_email, subject, body):
 # This is how the badge number shows on the cart icon across all pages
 @app.context_processor
 def inject_cart_count():
+    wishlist_count = 0
     if 'user_id' in session:
         count = CartItem.query.filter_by(user_id=session['user_id']).count()
-        return {'cart_count': count}
+        wishlist_count = Wishlist.query.filter_by(user_id=session['user_id']).count()
+        return {'cart_count': count, 'wishlist_count': wishlist_count}
     elif session.get('guest'):
         count = sum(session.get('guest_cart', {}).values())
-        return {'cart_count': count}
-    return {'cart_count': 0}
+        return {'cart_count': count, 'wishlist_count': 0}
+    return {'cart_count': 0, 'wishlist_count': 0}
 
 
 # ── Jinja filter: count how many orders a user has ────────────────────────────
@@ -249,6 +251,9 @@ def login():
         session.permanent = True
         session['user_id'] = user.id
         merge_guest_cart(user.id)
+        next_page = request.args.get('next') or request.form.get('next')
+        if next_page == 'checkout':
+            return redirect(url_for('checkout'))
         return redirect(url_for('home'))
 
     return render_template('login.html')
@@ -653,7 +658,10 @@ def home():
         query = query.order_by(Product.price.desc())
 
     products = query.all()
-    return render_template('home.html', products=products, user=current_user(), q=q, sort=sort)
+    wishlist_ids = []
+    if 'user_id' in session:
+        wishlist_ids = [w.product_id for w in Wishlist.query.filter_by(user_id=session['user_id']).all()]
+    return render_template('home.html', products=products, user=current_user(), q=q, sort=sort, wishlist_ids=wishlist_ids)
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -662,24 +670,24 @@ def home():
 
 @app.route('/cart/add/<int:product_id>')
 def add_to_cart(product_id):
-    if not current_user():
-        return redirect(url_for('login'))
-
-    if session.get('guest'):
+    if 'user_id' in session:
+        user_id = session['user_id']
+        item = CartItem.query.filter_by(user_id=user_id, product_id=product_id).first()
+        if item:
+            item.quantity += 1
+        else:
+            db.session.add(CartItem(user_id=user_id, product_id=product_id, quantity=1))
+        db.session.commit()
+    else:
+        # Guest — store in session
         cart = session.get('guest_cart', {})
         key  = str(product_id)
         cart[key] = cart.get(key, 0) + 1
         session['guest_cart'] = cart
-        return redirect(url_for('home'))
+        session.modified = True
 
-    user_id = session['user_id']
-    item = CartItem.query.filter_by(user_id=user_id, product_id=product_id).first()
-    if item:
-        item.quantity += 1
-    else:
-        db.session.add(CartItem(user_id=user_id, product_id=product_id, quantity=1))
-    db.session.commit()
-    return redirect(url_for('home'))
+    next_url = request.referrer or url_for('home')
+    return redirect(next_url)
 
 
 # ── Update quantity for logged-in users ───────────────────────────────────────
@@ -756,16 +764,48 @@ def cart():
 
 
 # ═════════════════════════════════════════════════════════════════════════════
+#  WISHLIST
+# ═════════════════════════════════════════════════════════════════════════════
+
+@app.route('/wishlist')
+def wishlist():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    items = Wishlist.query.filter_by(user_id=session['user_id']).all()
+    return render_template('wishlist.html', items=items, user=current_user())
+
+
+@app.route('/wishlist/add/<int:product_id>')
+def wishlist_add(product_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    user_id = session['user_id']
+    if not Wishlist.query.filter_by(user_id=user_id, product_id=product_id).first():
+        db.session.add(Wishlist(user_id=user_id, product_id=product_id))
+        db.session.commit()
+    return redirect(request.referrer or url_for('home'))
+
+
+@app.route('/wishlist/remove/<int:product_id>')
+def wishlist_remove(product_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    item = Wishlist.query.filter_by(user_id=session['user_id'], product_id=product_id).first()
+    if item:
+        db.session.delete(item)
+        db.session.commit()
+    return redirect(request.referrer or url_for('wishlist'))
+
+
+# ═════════════════════════════════════════════════════════════════════════════
 #  CHECKOUT
 # ═════════════════════════════════════════════════════════════════════════════
 
 @app.route('/checkout', methods=['GET'])
 def checkout():
-    if not current_user():
-        return redirect(url_for('login'))
-    if session.get('guest'):
+    if 'user_id' not in session:
         flash('Please log in or create an account to complete your order.')
-        return redirect(url_for('login'))
+        return redirect(url_for('login', next='checkout'))
 
     user_id = session['user_id']
     items   = CartItem.query.filter_by(user_id=user_id).all()
@@ -1168,6 +1208,19 @@ with app.app_context():
             conn.execute(db.text('ALTER TABLE order_item ADD COLUMN IF NOT EXISTS product_name VARCHAR(200)'))
             conn.commit()
         except Exception: pass
+
+        # wishlist table — db.create_all() handles new DBs; this covers existing ones
+        try:
+            conn.execute(db.text('''
+                CREATE TABLE IF NOT EXISTS wishlist (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER NOT NULL REFERENCES "user"(id),
+                    product_id INTEGER NOT NULL REFERENCES product(id)
+                )
+            '''))
+            conn.commit()
+        except Exception:
+            pass
 
     # Mark all existing users (who have no verify_token) as verified
     # so they aren't locked out after the verification feature was added

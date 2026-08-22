@@ -117,6 +117,14 @@ class Address(db.Model):
     is_default = db.Column(db.Boolean, default=False)
 
 
+# ── Wishlist ──────────────────────────────────────────────────────────────────
+class Wishlist(db.Model):
+    id         = db.Column(db.Integer, primary_key=True)
+    user_id    = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)
+    product    = db.relationship('Product')
+
+
 # ── Newsletter Subscriber ─────────────────────────────────────────────────────
 class NewsletterSubscriber(db.Model):
     id    = db.Column(db.Integer, primary_key=True)

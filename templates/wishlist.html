@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% block title %}Wishlist{% endblock %}
+
+{% block content %}
+<div style="max-width:960px; margin:0 auto; padding:40px 20px 80px;">
+
+  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:32px; border-bottom:2px solid #111; padding-bottom:16px;">
+    <h1 style="font-family:'Playfair Display',serif; font-size:2rem; font-weight:700; letter-spacing:0.04em;">MY WISHLIST</h1>
+    <a href="{{ url_for('home') }}" style="font-size:0.82rem; color:#555; text-decoration:underline;">Continue Shopping</a>
+  </div>
+
+  {% if items %}
+  <div class="product-grid">
+    {% for w in items %}
+    {% set p = w.product %}
+    <div class="product-card">
+      <!-- Remove from wishlist -->
+      <a href="{{ url_for('wishlist_remove', product_id=p.id) }}" class="wishlist-btn wishlisted" title="Remove from wishlist">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="#e53935" stroke="#e53935" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+        </svg>
+      </a>
+
+      <img src="{{ p.image_url }}" alt="{{ p.name }}" />
+      <div class="product-info">
+        <h3>{{ p.name }}</h3>
+        <p class="desc">{{ p.short_description or p.description }}</p>
+        <div class="price-row">
+          <span class="price">₹{{ p.price }}</span>
+          {% if p.compare_price and p.compare_price > p.price %}
+          <span class="compare-price">₹{{ p.compare_price }}</span>
+          <span class="discount-badge">{{ p.discount_percent }}% off</span>
+          {% endif %}
+        </div>
+        <a class="add-btn" href="{{ url_for('add_to_cart', product_id=p.id) }}">Add to Cart</a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <div style="text-align:center; padding:60px 20px;">
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5" style="margin-bottom:16px;">
+      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+    </svg>
+    <p style="color:#999; font-size:0.95rem;">Your wishlist is empty.</p>
+    <a href="{{ url_for('home') }}" class="btn btn-dark" style="display:inline-block; margin-top:16px;">Browse Products</a>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

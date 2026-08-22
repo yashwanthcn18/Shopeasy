@@ -441,11 +441,57 @@ body.auth-page {
   line-height: 1.5;
 }
 
+.price-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
 .product-info .price {
   font-size: 1rem;
   font-weight: 600;
-  margin-bottom: 14px;
   color: #111;
+}
+
+.compare-price {
+  font-size: 0.82rem;
+  color: #aaa;
+  text-decoration: line-through;
+}
+
+.discount-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: #e8f5e9;
+  color: #2e7d32;
+  padding: 2px 6px;
+  border-radius: 10px;
+}
+
+/* Wishlist heart button on product card */
+.wishlist-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  background: rgba(255,255,255,0.85);
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #888;
+  transition: all 0.2s;
+  backdrop-filter: blur(4px);
+}
+
+.wishlist-btn:hover,
+.wishlist-btn.wishlisted {
+  color: #e53935;
+  background: #fff;
 }
 
 .product-info .add-btn {
