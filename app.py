@@ -94,8 +94,8 @@ def inject_cart_count():
         count = CartItem.query.filter_by(user_id=session['user_id']).count()
         wishlist_count = Wishlist.query.filter_by(user_id=session['user_id']).count()
         return {'cart_count': count, 'wishlist_count': wishlist_count}
-    elif session.get('guest'):
-        count = sum(session.get('guest_cart', {}).values())
+    elif session.get('guest_cart'):
+        count = sum(session['guest_cart'].values())
         return {'cart_count': count, 'wishlist_count': 0}
     return {'cart_count': 0, 'wishlist_count': 0}
 
