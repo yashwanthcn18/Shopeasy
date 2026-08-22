@@ -251,6 +251,7 @@ def login():
         session.permanent = True
         session['user_id'] = user.id
         merge_guest_cart(user.id)
+        flash(f'Welcome back, {user.full_name}!', 'login_success')
         next_page = request.args.get('next') or request.form.get('next')
         if next_page == 'checkout':
             return redirect(url_for('checkout'))

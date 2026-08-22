@@ -262,6 +262,40 @@ nav {
 }
 
 
+/* ── Login success toast ───────────────────────────────────────────────────── */
+.login-toast {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 9999;
+  background: #111;
+  color: #fff;
+  padding: 14px 20px;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+  animation: toastIn 0.35s ease;
+  max-width: 300px;
+}
+
+.login-toast.hide {
+  animation: toastOut 0.4s ease forwards;
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes toastOut {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(-12px); }
+}
+
 /* ── Auth forms (login / signup) ───────────────────────────────────────────── */
 /* Dark background on auth pages */
 body.auth-page {

@@ -129,6 +129,24 @@
   </div>
 
 
+  <!-- Login success toast -->
+  {% with messages = get_flashed_messages(category_filter=['login_success']) %}
+    {% if messages %}
+    <div class="login-toast" id="loginToast">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+      </svg>
+      <span>{{ messages[0] }}</span>
+    </div>
+    <script>
+      setTimeout(function() {
+        var t = document.getElementById('loginToast');
+        if (t) { t.classList.add('hide'); setTimeout(function(){ t.remove(); }, 400); }
+      }, 3000);
+    </script>
+    {% endif %}
+  {% endwith %}
+
   <div class="container">
     {% with messages = get_flashed_messages() %}
       {% if messages %}
